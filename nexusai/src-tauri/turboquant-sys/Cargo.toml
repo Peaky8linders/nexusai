@@ -1,0 +1,12 @@
+[package]
+name = "turboquant-sys"
+version = "0.1.0"
+edition = "2021"
+description = "TurboQuant FFI bindings — KV cache compression via randomized rotation + scalar quantization"
+
+[dependencies]
+
+[features]
+default = []
+metal = []
+cuda = []

@@ -1,0 +1,39 @@
+[package]
+name = "nexusai"
+version = "0.1.0"
+description = "TurboQuant-powered local-first AI agent runtime"
+authors = ["NexusAI Team"]
+edition = "2021"
+
+[lib]
+name = "nexusai_lib"
+crate-type = ["lib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["stream", "json", "rustls-tls"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+thiserror = "1"
+futures = "0.3"
+sha2 = "0.10"
+hex = "0.4"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+cuda = []
+metal = []
+vulkan = []

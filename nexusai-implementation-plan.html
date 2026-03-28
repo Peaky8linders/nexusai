@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexusAI — Edge AI Runtime Implementation Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05060a;
+    --surface: #0d0f17;
+    --surface2: #141722;
+    --surface3: #1a1e2e;
+    --accent: #6ee7b7;
+    --accent2: #818cf8;
+    --accent3: #f472b6;
+    --warn: #fbbf24;
+    --text: #e2e8f0;
+    --dim: #64748b;
+    --border: #1e293b;
+    --glow-g: rgba(110,231,183,0.1);
+    --glow-p: rgba(129,140,248,0.1);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    font-weight: 300;
+    line-height: 1.7;
+  }
+
+  .hero {
+    padding: 80px 40px 60px;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -100px;
+    right: -200px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(110,231,183,0.08), transparent 70%);
+    border-radius: 50%;
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -150px;
+    left: -100px;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(129,140,248,0.06), transparent 70%);
+    border-radius: 50%;
+  }
+
+  .hero-inner { max-width: 800px; position: relative; z-index: 1; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(110,231,183,0.2);
+    padding: 5px 14px;
+    border-radius: 16px;
+    background: rgba(110,231,183,0.04);
+    margin-bottom: 24px;
+  }
+
+  .badge::before { content: '◆'; font-size: 8px; }
+
+  h1 {
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1.5px;
+    margin-bottom: 16px;
+  }
+
+  .g-text {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-desc {
+    font-size: 17px;
+    color: var(--dim);
+    max-width: 560px;
+  }
+
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 40px; }
+
+  section { padding: 64px 0; border-bottom: 1px solid var(--border); }
+
+  .stag {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  h2 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 24px;
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  p { margin-bottom: 14px; font-size: 15px; }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 24px 0; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    transition: all 0.3s;
+  }
+
+  .card:hover {
+    border-color: rgba(110,231,183,0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+  }
+
+  .card h3 { color: var(--accent); font-size: 16px; }
+  .card p { color: var(--dim); font-size: 13px; margin-bottom: 0; }
+
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 13px;
+  }
+
+  .comp-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent);
+  }
+
+  .comp-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--dim);
+  }
+
+  .comp-table tr:hover td { background: var(--surface); color: var(--text); }
+  .comp-table .us { color: var(--accent); font-weight: 600; }
+
+  .signal {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent2);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 20px 0;
+  }
+
+  .signal h4 {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .signal p { font-size: 13px; color: var(--dim); margin: 0; }
+
+  .phase {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .phase::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 3px;
+  }
+
+  .phase-1::before { background: var(--accent); }
+  .phase-2::before { background: var(--accent2); }
+  .phase-3::before { background: var(--accent3); }
+  .phase-4::before { background: var(--warn); }
+
+  .phase-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .phase-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .pt-1 { background: rgba(110,231,183,0.1); color: var(--accent); }
+  .pt-2 { background: rgba(129,140,248,0.1); color: var(--accent2); }
+  .pt-3 { background: rgba(244,114,182,0.1); color: var(--accent3); }
+  .pt-4 { background: rgba(251,191,36,0.1); color: var(--warn); }
+
+  .phase h3 { font-size: 20px; margin-bottom: 10px; }
+  .phase p { font-size: 14px; color: var(--dim); }
+
+  .task-list { margin: 12px 0; padding-left: 0; list-style: none; }
+
+  .task-list li {
+    padding: 6px 0 6px 24px;
+    position: relative;
+    font-size: 13px;
+    color: var(--dim);
+  }
+
+  .task-list li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .arch-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 24px 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    overflow-x: auto;
+    white-space: pre;
+    line-height: 1.8;
+  }
+
+  .metric-row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin: 20px 0;
+  }
+
+  .metric {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .metric-val {
+    font-size: 28px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .metric-lbl {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .risk-card {
+    background: var(--surface);
+    border: 1px solid rgba(251,191,36,0.2);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .risk-card h3 { color: var(--warn); font-size: 15px; }
+  .risk-card p { color: var(--dim); font-size: 13px; margin-bottom: 0; }
+
+  .footer {
+    text-align: center;
+    padding: 48px 40px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+  }
+
+  @media (max-width: 768px) {
+    .hero { padding: 40px 20px; }
+    .wrap { padding: 0 20px; }
+    .comp-table { font-size: 11px; }
+    .comp-table th, .comp-table td { padding: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="badge">Implementation Plan v1.0</div>
+    <h1>Nexus<span class="g-text">AI</span><br>Local-First Agent Runtime</h1>
+    <p class="hero-desc">A TurboQuant-powered edge AI runtime that makes 35B+ models with 100K+ context windows usable on consumer hardware. Privacy-first. No cloud dependency. One-click setup.</p>
+    <div class="metric-row" style="margin-top:32px">
+      <div class="metric"><span class="metric-val">266K+</span><span class="metric-lbl">r/LocalLLaMA members</span></div>
+      <div class="metric"><span class="metric-val">156K+</span><span class="metric-lbl">Open WebUI users</span></div>
+      <div class="metric"><span class="metric-val">$0</span><span class="metric-lbl">Per-token cost</span></div>
+      <div class="metric"><span class="metric-val">6×</span><span class="metric-lbl">TQ Compression</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- MARKET RESEARCH -->
+<section>
+  <div class="wrap">
+    <div class="stag">01 — Market Research (Last 30 Days Signal)</div>
+    <h2>What the Community is Saying</h2>
+
+    <div class="signal">
+      <h4>Reddit Signal — r/LocalLLaMA (266K members)</h4>
+      <p>Top pain points: OOM crashes when running 70B+ models, context windows capped at 16K on 24GB GPUs, no simple "one-click" agent setup. The community's #1 tool is Ollama (55 tok/s on Llama 3.1 8B). TurboQuant hype thread generated massive excitement — "extremely excited for the future of local LLM."</p>
+    </div>
+
+    <div class="signal">
+      <h4>X/Twitter Signal — 11.9M+ Views on TurboQuant</h4>
+      <p>@Prince_Canuma's MLX TurboQuant implementation on Qwen3.5-35B: 100% exact match at every quantization level. @CryptoKaleo: "Google TurboQuant is basically Pied Piper." Builders porting to llama.cpp, MLX, Triton within 24 hours. Strong signal: people are building this NOW.</p>
+    </div>
+
+    <div class="signal">
+      <h4>Hacker News / Substack Signal</h4>
+      <p>Nokast's "Zac" — local PA built on Ollama + TurboQuant vision. The Kaitchup newsletter analysis: "TurboQuant is especially attractive for serving because it is online and calibration-free." Vucense deep-dive: "Inference Sovereignty" narrative gaining traction.</p>
+    </div>
+
+    <div class="signal">
+      <h4>Product Hunt / GitHub Signal</h4>
+      <p>TurboQuant submitted to PH within 48 hours of announcement. llama.cpp Discussion #20969: working CPU + Metal implementations. Multiple forks racing (TheTom/turboquant_plus, Aaryan-Kapoor, spiritbuun CUDA fork). Open WebUI at 156K+ users. Community is infrastructure-ready but lacks unified product.</p>
+    </div>
+
+    <h3 style="margin-top:32px">Community Pain Points (Ranked by Frequency)</h3>
+    <div class="grid2">
+      <div class="card">
+        <h3>#1 — Memory Wall</h3>
+        <p>"We had to dial num_ctx down from 32K to 16K just to avoid OOM crashes" — StarkInsider testing 120B models on consumer GPUs. KV cache is the bottleneck, not model weights.</p>
+      </div>
+      <div class="card">
+        <h3>#2 — Setup Friction</h3>
+        <p>r/LocalLLaMA consensus: Ollama is great for CLI, but non-technical users need "double-click and go." LM Studio closest to this but closed-source and no agent support.</p>
+      </div>
+      <div class="card">
+        <h3>#3 — No Agent Runtime</h3>
+        <p>Tool calling, MCP support, multi-step workflows — all require stitching together 3-5 tools. No single product does local inference + tool use + memory + UI.</p>
+      </div>
+      <div class="card">
+        <h3>#4 — Context Too Short</h3>
+        <p>On 24GB VRAM, max practical context is ~32K tokens for 8B models. Users want 100K+ for code review, document analysis, meeting transcripts. TurboQuant unlocks this.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPETITIVE LANDSCAPE -->
+<section>
+  <div class="wrap">
+    <div class="stag">02 — Competitive Landscape</div>
+    <h2>Where We Fit</h2>
+
+    <table class="comp-table">
+      <tr>
+        <th>Product</th>
+        <th>Runtime</th>
+        <th>GUI</th>
+        <th>Agents/Tools</th>
+        <th>TurboQuant</th>
+        <th>RAG</th>
+        <th>Cross-platform</th>
+      </tr>
+      <tr>
+        <td>Ollama</td>
+        <td>✅ CLI</td>
+        <td>❌</td>
+        <td>⚠️ Basic</td>
+        <td>❌</td>
+        <td>❌</td>
+        <td>✅</td>
+      </tr>
+      <tr>
+        <td>Open WebUI</td>
+        <td>Via Ollama</td>
+        <td>✅ Browser</td>
+        <td>⚠️ Plugins</td>
+        <td>❌</td>
+        <td>✅</td>
+        <td>✅ Docker</td>
+      </tr>
+      <tr>
+        <td>LM Studio</td>
+        <td>✅ Built-in</td>
+        <td>✅ Desktop</td>
+        <td>❌</td>
+        <td>❌</td>
+        <td>✅</td>
+        <td>✅</td>
+      </tr>
+      <tr>
+        <td>Jan.ai</td>
+        <td>Via Ollama</td>
+        <td>✅ Desktop</td>
+        <td>⚠️ Extensions</td>
+        <td>❌</td>
+        <td>✅</td>
+        <td>✅</td>
+      </tr>
+      <tr>
+        <td>AnythingLLM</td>
+        <td>Via Ollama</td>
+        <td>✅ Desktop</td>
+        <td>⚠️ Basic</td>
+        <td>❌</td>
+        <td>✅</td>
+        <td>✅</td>
+      </tr>
+      <tr>
+        <td class="us">NexusAI (ours)</td>
+        <td class="us">✅ Built-in + TQ</td>
+        <td class="us">✅ Native</td>
+        <td class="us">✅ MCP + Tools</td>
+        <td class="us">✅ First</td>
+        <td class="us">✅ TQ-compressed</td>
+        <td class="us">✅ Mac/Win/Linux</td>
+      </tr>
+    </table>
+
+    <p style="font-size:14px; color:var(--dim)">Key gap: <strong>No product combines a native desktop app + built-in TurboQuant KV compression + agent tool-calling + RAG</strong>. The community has all the pieces (Ollama, Open WebUI, llama.cpp TQ forks) but no one has assembled them into a single, polished product.</p>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section>
+  <div class="wrap">
+    <div class="stag">03 — System Architecture</div>
+    <h2>How It's Built</h2>
+
+    <div class="arch-box">┌─────────────────────────────────────────────────────────┐
+│                    NexusAI Desktop App                   │
+│                   (Tauri + React/TS)                     │
+├─────────────┬──────────────┬───────────────┬────────────┤
+│  Chat UI    │  Agent Panel │  RAG Explorer │  Settings  │
+│  (Markdown, │  (Tool calls,│  (Drag-drop   │  (Model    │
+│   voice,    │   MCP flows, │   docs, auto- │   select,  │
+│   stream)   │   approvals) │   index)      │   TQ bits) │
+├─────────────┴──────────────┴───────────────┴────────────┤
+│              NexusAI Core Engine (Rust)                  │
+├──────────────────┬──────────────────────────────────────┤
+│  Model Manager   │  Session / Memory Manager            │
+│  (Download,      │  (Conversation history, persistent   │
+│   GGUF catalog,  │   memory via SQLite, embeddings)     │
+│   auto-select)   │                                      │
+├──────────────────┴──────────────────────────────────────┤
+│         TurboQuant Inference Layer (C/C++ + Metal)      │
+├───────────────┬────────────────────┬────────────────────┤
+│  llama.cpp    │  TQ KV Cache       │  TQ Vector Index   │
+│  (forked,     │  (turbo3/turbo4    │  (RAG embeddings   │
+│   patched)    │   compression,     │   with TQ-powered  │
+│               │   6× memory ↓)     │   HNSW index)      │
+├───────────────┴────────────────────┴────────────────────┤
+│  Hardware Abstraction: Metal (Mac) | CUDA | Vulkan | CPU│
+└─────────────────────────────────────────────────────────┘</div>
+
+    <h3 style="margin-top:24px">Key Design Decisions</h3>
+    <div class="grid2">
+      <div class="card">
+        <h3>Tauri, Not Electron</h3>
+        <p>~5MB app binary vs 150MB+ Electron. Rust backend gives direct FFI to llama.cpp C code. Native OS integrations (menu bar, system tray, file dialogs) without web overhead. Critical for "it just works" perception.</p>
+      </div>
+      <div class="card">
+        <h3>Fork llama.cpp, Don't Wrap Ollama</h3>
+        <p>Ollama adds a REST API layer we don't need. Direct llama.cpp fork lets us patch in TurboQuant KV cache types (turbo3, turbo4) at the GGML level. We can ship TQ support before Ollama merges it upstream.</p>
+      </div>
+      <div class="card">
+        <h3>MCP-Native Agent System</h3>
+        <p>Model Context Protocol is becoming the standard for tool-calling. Build MCP server support directly into the runtime — users install tools as MCP plugins (calendar, email, file system, web browse). Agents can chain multiple tool calls autonomously.</p>
+      </div>
+      <div class="card">
+        <h3>TQ-Compressed RAG Index</h3>
+        <p>Use TurboQuant for embedding compression in the RAG vector index too. 6× smaller indices means you can index entire codebases / document libraries that would OOM with standard HNSW. Instant indexing (no PQ training).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TECH STACK -->
+<section>
+  <div class="wrap">
+    <div class="stag">04 — Technology Stack</div>
+    <h2>What We're Building With</h2>
+
+    <div class="grid3">
+      <div class="card">
+        <h3>Frontend</h3>
+        <p>React + TypeScript, Tailwind CSS, Tauri v2. Motion for animations. Shiki for code highlighting. Native OS menu bar integration.</p>
+      </div>
+      <div class="card">
+        <h3>Backend (Rust)</h3>
+        <p>Tauri Rust core. Session management, model lifecycle, download manager, SQLite for persistent memory, MCP client/server.</p>
+      </div>
+      <div class="card">
+        <h3>Inference Engine</h3>
+        <p>llama.cpp fork with TurboQuant GGML types. Metal backend for Mac, CUDA for Nvidia, Vulkan fallback. Flash attention + TQ fused kernels.</p>
+      </div>
+      <div class="card">
+        <h3>TurboQuant Core</h3>
+        <p>C implementation: WHT rotation, Lloyd-Max codebooks, 3-bit/4-bit pack/unpack. Pre-computed codebooks for d=64,128,256. Metal/CUDA kernels for dequant.</p>
+      </div>
+      <div class="card">
+        <h3>RAG / Embeddings</h3>
+        <p>Local embedding model (nomic-embed). HNSW index with TQ-compressed vectors. File watchers for auto-indexing workspace folders. PDF/DOCX/code parsers.</p>
+      </div>
+      <div class="card">
+        <h3>Agent Framework</h3>
+        <p>MCP protocol implementation. Built-in tools: file read/write, shell exec (sandboxed), web fetch, calculator. Approval mode for dangerous actions.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- IMPLEMENTATION PHASES -->
+<section>
+  <div class="wrap">
+    <div class="stag">05 — Implementation Roadmap</div>
+    <h2>Four Phases to Launch</h2>
+
+    <div class="phase phase-1">
+      <div class="phase-head">
+        <h3>Phase 1: Foundation</h3>
+        <span class="phase-tag pt-1">Weeks 1-3</span>
+      </div>
+      <p>Get a working Tauri app that loads and runs a model with TurboQuant KV compression on Mac.</p>
+      <ul class="task-list">
+        <li>Scaffold Tauri v2 + React project with basic chat UI (streaming, markdown render)</li>
+        <li>Fork llama.cpp, integrate TurboQuant TQ3_0 type from Aaryan-Kapoor's branch</li>
+        <li>Implement Metal dequant kernels (adapt from TheTom/turboquant_plus)</li>
+        <li>Build Rust FFI bindings: load model → create TQ KV cache → generate tokens</li>
+        <li>Model download manager: GGUF catalog from HuggingFace, progress bar, resume</li>
+        <li>Benchmark: run Qwen3.5-35B Q4_K_M with turbo3 KV on M-series Mac, verify 100K context</li>
+        <li>CI pipeline: build macOS .dmg, test on M1/M2/M3/M4</li>
+      </ul>
+      <p style="color:var(--accent);font-size:13px;margin-top:8px;margin-bottom:0"><strong>Exit criteria:</strong> User downloads .dmg, double-clicks, selects a model, chats with 64K+ context on 16GB Mac.</p>
+    </div>
+
+    <div class="phase phase-2">
+      <div class="phase-head">
+        <h3>Phase 2: Intelligence Layer</h3>
+        <span class="phase-tag pt-2">Weeks 4-6</span>
+      </div>
+      <p>Add RAG, persistent memory, and basic tool-calling to make it an actual agent runtime.</p>
+      <ul class="task-list">
+        <li>RAG pipeline: drag-drop files → chunk → embed (nomic-embed-text local) → TQ-compressed HNSW index</li>
+        <li>File watchers: auto-index workspace folders on change</li>
+        <li>Persistent memory: SQLite store for conversation summaries, user facts, preferences</li>
+        <li>Tool-calling framework: parse function-call JSON from model output, route to handlers</li>
+        <li>Built-in tools: read_file, write_file, list_directory, web_fetch, calculator, shell_exec (sandboxed)</li>
+        <li>Approval mode UI: show pending tool calls, user confirms/rejects before execution</li>
+        <li>Multi-conversation management: sidebar with searchable history, favorites, export</li>
+      </ul>
+      <p style="color:var(--accent2);font-size:13px;margin-top:8px;margin-bottom:0"><strong>Exit criteria:</strong> User drops a codebase folder, asks "find all TODOs and suggest fixes," agent reads files, produces actionable output.</p>
+    </div>
+
+    <div class="phase phase-3">
+      <div class="phase-head">
+        <h3>Phase 3: Agent Platform</h3>
+        <span class="phase-tag pt-3">Weeks 7-9</span>
+      </div>
+      <p>MCP plugin ecosystem, Windows/Linux support, CUDA TurboQuant kernels.</p>
+      <ul class="task-list">
+        <li>MCP server runtime: load MCP plugins from local directory, discover tools via protocol</li>
+        <li>First-party MCP plugins: local calendar, local email (IMAP), clipboard, screenshot-to-text</li>
+        <li>Plugin marketplace UI: browse community MCP servers, one-click install</li>
+        <li>CUDA TurboQuant kernels: adapt spiritbuun's fork, target RTX 3090/4090</li>
+        <li>Windows build: Tauri + MSVC, Vulkan fallback for AMD GPUs</li>
+        <li>Linux build: AppImage, CUDA and Vulkan paths</li>
+        <li>Background agent mode: system tray icon, wake-on-hotkey, ambient listening (opt-in voice)</li>
+        <li>Multi-model routing: small model for fast tasks, large model for complex reasoning (auto-switch)</li>
+      </ul>
+      <p style="color:var(--accent3);font-size:13px;margin-top:8px;margin-bottom:0"><strong>Exit criteria:</strong> User installs on Windows, connects calendar MCP plugin, says "schedule a meeting based on this email thread," agent reads email + creates calendar event.</p>
+    </div>
+
+    <div class="phase phase-4">
+      <div class="phase-head">
+        <h3>Phase 4: Launch & Growth</h3>
+        <span class="phase-tag pt-4">Weeks 10-12</span>
+      </div>
+      <p>Polish, benchmark, launch on Product Hunt + r/LocalLLaMA. Open-source the TQ engine.</p>
+      <ul class="task-list">
+        <li>Comprehensive benchmarks: context length × model size × hardware matrix, publish results</li>
+        <li>Open-source the TurboQuant inference library as standalone project (build community goodwill)</li>
+        <li>Landing page: nexusai.dev — "Your AI, Your Hardware, Your Data"</li>
+        <li>Product Hunt launch with demo video showing 100K context on MacBook Air</li>
+        <li>r/LocalLLaMA announcement with honest benchmark data + comparison table</li>
+        <li>YouTube demo: "Running a 35B model with 100K context on a $1,299 MacBook"</li>
+        <li>Telemetry-free analytics: opt-in usage stats for product improvement</li>
+        <li>Community Discord for support, plugin development, model recommendations</li>
+      </ul>
+      <p style="color:var(--warn);font-size:13px;margin-top:8px;margin-bottom:0"><strong>Exit criteria:</strong> 5,000 downloads in first week. Top 5 on Product Hunt daily. 500+ GitHub stars on TQ library.</p>
+    </div>
+  </div>
+</section>
+
+<!-- MONETIZATION -->
+<section>
+  <div class="wrap">
+    <div class="stag">06 — Business Model</div>
+    <h2>How We Make Money</h2>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Free Tier (Core)</h3>
+        <p>Full local inference with TurboQuant. Chat UI. Basic RAG. Built-in tools. All models. Unlimited usage. This is the growth engine — never paywall local inference.</p>
+      </div>
+      <div class="card">
+        <h3>Pro — $12/mo</h3>
+        <p>Advanced agent workflows (multi-step autonomous), premium MCP plugins (Notion, Linear, Jira), priority model downloads, cloud-hybrid fallback (route hard queries to Claude/GPT via API key), advanced RAG (recursive chunking, re-ranking).</p>
+      </div>
+      <div class="card">
+        <h3>Team — $29/user/mo</h3>
+        <p>Shared RAG knowledge bases across team. Admin controls. Audit logs. SSO. Shared MCP plugin configurations. Central model management. Usage analytics dashboard.</p>
+      </div>
+      <div class="card">
+        <h3>Enterprise — Custom</h3>
+        <p>On-prem deployment on company servers. Custom model fine-tuning pipeline. HIPAA/SOC2 compliance package. Dedicated support. Air-gapped deployment option.</p>
+      </div>
+    </div>
+
+    <div class="signal">
+      <h4>Revenue Projection (Conservative)</h4>
+      <p>Month 1: 5K downloads, 2% Pro conversion = 100 × $12 = $1,200 MRR. Month 6: 50K downloads, 3% conversion = 1,500 × $12 = $18,000 MRR. Month 12: 200K downloads, 4% conversion + Team = $120K+ MRR. Comparable: Open WebUI has 156K users with zero monetization. LM Studio is free but closed-source. The market is large and unmonetized.</p>
+    </div>
+  </div>
+</section>
+
+<!-- RISKS -->
+<section>
+  <div class="wrap">
+    <div class="stag">07 — Risks & Mitigations</div>
+    <h2>What Could Go Wrong</h2>
+
+    <div class="grid2">
+      <div class="risk-card">
+        <h3>Ollama merges TurboQuant first</h3>
+        <p>Mitigation: Our moat isn't TQ alone — it's TQ + native app + agents + RAG as one product. Even if Ollama adds --cache-type turbo3, they won't build a desktop app or agent framework. We're a product, they're a runtime.</p>
+      </div>
+      <div class="risk-card">
+        <h3>TurboQuant quality degrades on some models</h3>
+        <p>Mitigation: Community data shows TQ works best on 8B+ models; small models (0.6B) see quality loss. We auto-detect model size and default to q8 KV cache for sub-3B models. Show quality metrics in UI so users can verify.</p>
+      </div>
+      <div class="risk-card">
+        <h3>LM Studio or Jan add agent support</h3>
+        <p>Mitigation: LM Studio is closed-source, which r/LocalLLaMA actively distrusts. Jan is slower-moving. Our advantage: ship first with TQ + agents, build community around open-source TQ engine. First-mover in the integrated product category.</p>
+      </div>
+      <div class="risk-card">
+        <h3>Apple/Nvidia ship native TQ in hardware</h3>
+        <p>Mitigation: This is actually good for us — hardware TQ acceleration makes our product faster. We're the app layer on top. Expected timeline: Apple M5 (late 2026/2027). We have 12+ months of software-only advantage.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DAY 1 TASKS -->
+<section>
+  <div class="wrap">
+    <div class="stag">08 — Day 1 Execution</div>
+    <h2>What to Do Right Now</h2>
+
+    <div class="grid2">
+      <div class="card" style="border-color:rgba(110,231,183,0.3)">
+        <h3>Step 1: Fork & Validate</h3>
+        <p>Fork llama.cpp. Cherry-pick Aaryan-Kapoor's TQ3_0 branch + TheTom's Metal dequant optimizations. Run Qwen3.5-35B-A3B with --cache-type-k turbo3 --cache-type-v turbo3. Verify output matches f16 baseline. Benchmark context length ceiling on 16GB Mac.</p>
+      </div>
+      <div class="card" style="border-color:rgba(110,231,183,0.3)">
+        <h3>Step 2: Tauri Scaffold</h3>
+        <p>npx create-tauri-app nexusai --template react-ts. Build minimal chat UI: message list, input box, streaming response, model selector dropdown. Wire to llama.cpp via Rust FFI. Get first token streaming within 48 hours.</p>
+      </div>
+      <div class="card" style="border-color:rgba(110,231,183,0.3)">
+        <h3>Step 3: TQ Benchmark Suite</h3>
+        <p>Build automated quality benchmarks: perplexity on WikiText, needle-in-haystack at 8K/16K/32K/64K/128K, LongBench subset. Run across model × TQ-bits matrix. Publish results to build credibility before launch.</p>
+      </div>
+      <div class="card" style="border-color:rgba(110,231,183,0.3)">
+        <h3>Step 4: Community Signal</h3>
+        <p>Post on llama.cpp Discussion #20969: "Building a desktop app with TQ KV cache — here's our benchmark data." Share early .dmg alpha on r/LocalLLaMA. Collect feedback before investing in agent layer. Validate demand.</p>
+      </div>
+    </div>
+
+    <div class="arch-box" style="margin-top:24px"># Day 1 commands
+git clone https://github.com/ggml-org/llama.cpp nexus-llama
+cd nexus-llama
+git remote add tq-cpu https://github.com/Aaryan-Kapoor/llama.cpp
+git fetch tq-cpu turboquant-tq3_0
+git cherry-pick tq-cpu/turboquant-tq3_0
+
+# Build with Metal
+cmake -B build -DGGML_METAL=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+
+# Test TurboQuant KV cache
+./build/bin/llama-cli \
+  -m models/qwen3.5-35b-a3b-q4_k_m.gguf \
+  --cache-type-k turbo3 \
+  --cache-type-v turbo3 \
+  -c 65536 \
+  -p "Repeat this exact sentence: The quick brown fox"
+
+# Scaffold Tauri app
+npx create-tauri-app@latest nexusai --template react-ts
+cd nexusai && cargo add llama-cpp-sys</div>
+  </div>
+</section>
+
+<div class="footer">
+  <p>NexusAI Implementation Plan — March 28, 2026<br>
+  Market research via web search across Reddit, X, HN, Product Hunt, GitHub, Substack (last 30 days)<br>
+  Technical references: llama.cpp #20969, #20977, TheTom/turboquant_plus, Aaryan-Kapoor/llama.cpp</p>
+</div>
+
+</body>
+</html>

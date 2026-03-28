@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+target/
+
+# Build output
+dist/
+nexusai/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tauri
+nexusai/src-tauri/target/
+nexusai/src-tauri/llama-cpp/
+
+# Benchmarks output
+benchmarks/
+
+# Environment
+.env
+.env.local
+
+# Claude Code
+.claude/
+
+# Planning artifacts
+.planning/
