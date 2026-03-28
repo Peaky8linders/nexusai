@@ -5,14 +5,16 @@ use crate::inference::EngineState;
 use crate::memory::DbState;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Message {
     pub id: String,
-    pub role: String, // "user" | "assistant" | "system"
+    pub role: String,
     pub content: String,
     pub timestamp: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Conversation {
     pub id: String,
     pub title: String,
@@ -23,6 +25,7 @@ pub struct Conversation {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SendMessageRequest {
     pub conversation_id: String,
     pub content: String,
@@ -30,6 +33,7 @@ pub struct SendMessageRequest {
 }
 
 #[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct StreamChunk {
     pub conversation_id: String,
     pub content: String,

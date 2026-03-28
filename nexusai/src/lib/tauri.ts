@@ -3,7 +3,13 @@
  *
  * In development without Tauri (plain vite dev server), these functions
  * return stub data so the UI can be developed independently.
+ *
+ * All types use camelCase to match frontend conventions.
+ * The Rust backend uses #[serde(rename_all = "camelCase")] so the
+ * wire format matches automatically — no mapping layer needed.
  */
+
+import type { Conversation, ModelInfo, AppSettings, SystemInfo, StreamChunk } from "../types";
 
 const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
@@ -12,15 +18,19 @@ async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T
     const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
     return tauriInvoke<T>(cmd, args);
   }
-  // Stub mode — return mock data for UI development
-  console.log(`[stub] invoke(${cmd})`, args);
   throw new Error(`Tauri not available — running in browser stub mode`);
 }
 
-// Chat commands
+/** Check if we're running inside Tauri */
+export function isTauriApp(): boolean {
+  return isTauri;
+}
+
+// ── Chat commands ──────────────────────────────────────────────
+
 export async function sendMessage(conversationId: string, content: string, modelId?: string) {
   return invoke<void>("send_message", {
-    request: { conversation_id: conversationId, content, model_id: modelId },
+    request: { conversationId, content, modelId },
   });
 }
 
@@ -28,11 +38,11 @@ export async function stopGeneration() {
   return invoke<void>("stop_generation");
 }
 
-export async function getConversations() {
+export async function getConversations(): Promise<Conversation[]> {
   return invoke<Conversation[]>("get_conversations");
 }
 
-export async function createConversation(title: string, modelId: string) {
+export async function createConversation(title: string, modelId: string): Promise<Conversation> {
   return invoke<Conversation>("create_conversation", { title, modelId });
 }
 
@@ -40,34 +50,9 @@ export async function deleteConversation(id: string) {
   return invoke<void>("delete_conversation", { id });
 }
 
-// Model commands
-export interface ModelInfo {
-  id: string;
-  name: string;
-  size_bytes: number;
-  quantization: string;
-  parameters: string;
-  family: string;
-  downloaded: boolean;
-  loaded: boolean;
-  tq_compatible: boolean;
-}
+// ── Model commands ─────────────────────────────────────────────
 
-export interface Conversation {
-  id: string;
-  title: string;
-  created_at: number;
-  updated_at: number;
-  model_id: string;
-  messages: Array<{
-    id: string;
-    role: string;
-    content: string;
-    timestamp: number;
-  }>;
-}
-
-export async function listModels() {
+export async function listModels(): Promise<ModelInfo[]> {
   return invoke<ModelInfo[]>("list_models");
 }
 
@@ -83,21 +68,9 @@ export async function unloadModel() {
   return invoke<void>("unload_model");
 }
 
-// Settings
-export interface AppSettings {
-  default_model: string | null;
-  tq_kv_bits: number;
-  context_length: number;
-  temperature: number;
-  top_p: number;
-  max_tokens: number;
-  gpu_layers: number;
-  theme: string;
-  stream_response: boolean;
-  show_token_stats: boolean;
-}
+// ── Settings commands ──────────────────────────────────────────
 
-export async function getSettings() {
+export async function getSettings(): Promise<AppSettings> {
   return invoke<AppSettings>("get_settings");
 }
 
@@ -105,32 +78,23 @@ export async function updateSettings(settings: AppSettings) {
   return invoke<void>("update_settings", { settings });
 }
 
-// System
-export interface SystemInfo {
-  os: string;
-  arch: string;
-  total_memory_gb: number;
-  gpu_name: string | null;
-  gpu_memory_gb: number | null;
-  metal_supported: boolean;
-  cuda_supported: boolean;
-  recommended_context: number;
-  recommended_tq_bits: number;
-}
+// ── System commands ────────────────────────────────────────────
 
-export async function getSystemInfo() {
+export async function getSystemInfo(): Promise<SystemInfo> {
   return invoke<SystemInfo>("get_system_info");
 }
 
-// Event listening (for streaming)
+// ── Event listening (for streaming) ────────────────────────────
+
 export async function listenToStream(
-  callback: (chunk: { conversation_id: string; content: string; done: boolean; tokens_per_second: number | null }) => void,
-) {
+  callback: (chunk: StreamChunk) => void,
+): Promise<() => void> {
   if (isTauri) {
     const { listen } = await import("@tauri-apps/api/event");
-    return listen("chat:stream", (event) => {
-      callback(event.payload as Parameters<typeof callback>[0]);
+    const unlisten = await listen<StreamChunk>("chat:stream", (event) => {
+      callback(event.payload);
     });
+    return unlisten;
   }
-  return () => {}; // no-op unsubscribe in stub mode
+  return () => {};
 }

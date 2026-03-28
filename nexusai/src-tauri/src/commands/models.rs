@@ -4,6 +4,7 @@ use tauri::State;
 use crate::inference::EngineState;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ModelInfo {
     pub id: String,
     pub name: String,
@@ -17,6 +18,7 @@ pub struct ModelInfo {
 }
 
 #[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct DownloadProgress {
     pub model_id: String,
     pub bytes_downloaded: u64,

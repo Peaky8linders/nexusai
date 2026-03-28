@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Conversation, Message, ModelInfo } from "../types";
+import { isTauriApp } from "../lib/tauri";
 
 interface AppState {
   // Conversations
@@ -11,7 +12,11 @@ interface AppState {
   models: ModelInfo[];
   activeModelId: string | null;
 
+  // Backend connection
+  backendConnected: boolean;
+
   // Actions
+  init: () => Promise<void>;
   createConversation: (title: string) => void;
   setActiveConversation: (id: string | null) => void;
   deleteConversation: (id: string) => void;
@@ -29,6 +34,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   isGenerating: false,
   models: [],
   activeModelId: null,
+  backendConnected: false,
+
+  init: async () => {
+    if (!isTauriApp()) {
+      console.log("[NexusAI] Running in stub mode — no Tauri backend");
+      return;
+    }
+
+    try {
+      const { getConversations, listModels } = await import("../lib/tauri");
+
+      const [conversations, models] = await Promise.all([
+        getConversations().catch(() => [] as Conversation[]),
+        listModels().catch(() => [] as ModelInfo[]),
+      ]);
+
+      set({
+        conversations,
+        models,
+        backendConnected: true,
+      });
+      console.log("[NexusAI] Backend connected:", conversations.length, "conversations,", models.length, "models");
+    } catch (e) {
+      console.warn("[NexusAI] Failed to connect to backend:", e);
+    }
+  },
 
   createConversation: (title: string) => {
     const id = crypto.randomUUID();
@@ -45,16 +76,30 @@ export const useAppStore = create<AppState>((set, get) => ({
       conversations: [conversation, ...s.conversations],
       activeConversationId: id,
     }));
+
+    // Persist to backend if connected
+    if (get().backendConnected) {
+      import("../lib/tauri").then(({ createConversation: tauriCreate }) => {
+        tauriCreate(title, get().activeModelId ?? "").catch(console.warn);
+      });
+    }
   },
 
   setActiveConversation: (id) => set({ activeConversationId: id }),
 
-  deleteConversation: (id) =>
+  deleteConversation: (id) => {
     set((s) => ({
       conversations: s.conversations.filter((c) => c.id !== id),
       activeConversationId:
         s.activeConversationId === id ? null : s.activeConversationId,
-    })),
+    }));
+
+    if (get().backendConnected) {
+      import("../lib/tauri").then(({ deleteConversation: tauriDelete }) => {
+        tauriDelete(id).catch(console.warn);
+      });
+    }
+  },
 
   addMessage: (conversationId, message) =>
     set((s) => ({
