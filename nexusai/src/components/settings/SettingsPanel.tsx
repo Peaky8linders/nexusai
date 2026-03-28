@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "../../hooks/useKeyboard";
 
 interface SettingsPanelProps {
   onClose: () => void;
@@ -9,10 +10,25 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
   const [contextLength, setContextLength] = useState(65536);
   const [temperature, setTemperature] = useState(0.7);
   const [gpuLayers, setGpuLayers] = useState(-1);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(modalRef, true);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-nexus-surface border border-nexus-border rounded-xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Settings"
+    >
+      <div ref={modalRef} className="bg-nexus-surface border border-nexus-border rounded-xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-nexus-border">
           <h2 className="text-lg font-bold">Settings</h2>

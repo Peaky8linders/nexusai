@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Sidebar } from "./components/sidebar/Sidebar";
 import { ChatView } from "./components/chat/ChatView";
 import { SettingsPanel } from "./components/settings/SettingsPanel";
 import { ModelSelector } from "./components/settings/ModelSelector";
 import { RagExplorer } from "./components/rag/RagExplorer";
 import { MemoryPanel } from "./components/settings/MemoryPanel";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ToastContainer } from "./components/Toast";
+import { useKeyboard } from "./hooks/useKeyboard";
 import { useAppStore } from "./stores/appStore";
 import type { ViewMode } from "./types";
 
@@ -13,80 +16,97 @@ function App() {
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("chat");
   const activeConversation = useAppStore((s) => s.activeConversationId);
+  const createConversation = useAppStore((s) => s.createConversation);
+
+  // Global keyboard shortcuts
+  const shortcuts = useMemo(
+    () => ({
+      "mod+n": () => {
+        createConversation("New Chat");
+        setViewMode("chat");
+      },
+      "mod+,": () => setShowSettings((v) => !v),
+      "mod+m": () => setShowModelSelector((v) => !v),
+      Escape: () => {
+        setShowSettings(false);
+        setShowModelSelector(false);
+      },
+    }),
+    [createConversation],
+  );
+  useKeyboard(shortcuts);
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar
-        onOpenSettings={() => setShowSettings(true)}
-        viewMode={viewMode}
-        onChangeView={setViewMode}
-      />
-      <main className="flex-1 flex flex-col min-w-0">
-        {/* Top bar with model selector */}
-        <TopBar onOpenModelSelector={() => setShowModelSelector(true)} />
+    <ErrorBoundary>
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar
+          onOpenSettings={() => setShowSettings(true)}
+          viewMode={viewMode}
+          onChangeView={setViewMode}
+        />
+        <main className="flex-1 flex flex-col min-w-0">
+          <TopBar onOpenModelSelector={() => setShowModelSelector(true)} />
 
-        {viewMode === "chat" && (
-          activeConversation ? (
-            <ChatView conversationId={activeConversation} />
-          ) : (
-            <WelcomeScreen />
-          )
+          <ErrorBoundary>
+            {viewMode === "chat" &&
+              (activeConversation ? (
+                <ChatView conversationId={activeConversation} />
+              ) : (
+                <WelcomeScreen />
+              ))}
+
+            {viewMode === "rag" && (
+              <RagExplorer
+                files={[]}
+                totalChunks={0}
+                indexSizeMb={0}
+                tqSavingsPercent={0}
+                onDropFiles={() => {}}
+                onRemoveFile={() => {}}
+                onReindex={() => {}}
+              />
+            )}
+
+            {viewMode === "memory" && <MemoryPanel />}
+          </ErrorBoundary>
+        </main>
+
+        {showSettings && (
+          <SettingsPanel onClose={() => setShowSettings(false)} />
+        )}
+        {showModelSelector && (
+          <ModelSelector onClose={() => setShowModelSelector(false)} />
         )}
 
-        {viewMode === "rag" && (
-          <RagExplorer
-            files={[]}
-            totalChunks={0}
-            indexSizeMb={0}
-            tqSavingsPercent={0}
-            onDropFiles={() => {}}
-            onRemoveFile={() => {}}
-            onReindex={() => {}}
-          />
-        )}
-
-        {viewMode === "memory" && <MemoryPanel />}
-      </main>
-
-      {showSettings && (
-        <SettingsPanel onClose={() => setShowSettings(false)} />
-      )}
-      {showModelSelector && (
-        <ModelSelector onClose={() => setShowModelSelector(false)} />
-      )}
-    </div>
+        <ToastContainer />
+      </div>
+    </ErrorBoundary>
   );
 }
 
-function TopBar({
-  onOpenModelSelector,
-}: {
-  onOpenModelSelector: () => void;
-}) {
+function TopBar({ onOpenModelSelector }: { onOpenModelSelector: () => void }) {
   const activeModelId = useAppStore((s) => s.activeModelId);
 
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b border-nexus-border bg-nexus-surface/30">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onOpenModelSelector}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono
-                     bg-nexus-surface2 border border-nexus-border hover:border-nexus-accent/30
-                     text-nexus-dim hover:text-nexus-text transition-colors"
-        >
-          <span className="w-2 h-2 rounded-full bg-nexus-accent/50" />
-          {activeModelId || "Select Model"}
-          <span className="text-[10px] opacity-50">v</span>
-        </button>
-      </div>
+      <button
+        onClick={onOpenModelSelector}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono
+                   bg-nexus-surface2 border border-nexus-border hover:border-nexus-accent/30
+                   text-nexus-dim hover:text-nexus-text transition-colors"
+        aria-label="Select AI model"
+        aria-haspopup="dialog"
+      >
+        <span className="w-2 h-2 rounded-full bg-nexus-accent/50" aria-hidden="true" />
+        {activeModelId || "Select Model"}
+        <span className="text-[10px] opacity-50" aria-hidden="true">&#9662;</span>
+      </button>
 
       <div className="flex items-center gap-2">
         <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-nexus-accent/10 text-nexus-accent border border-nexus-accent/20">
           TQ3 Active
         </span>
-        <span className="text-[10px] font-mono text-nexus-dim">
-          64K ctx
-        </span>
+        <span className="text-[10px] font-mono text-nexus-dim">64K ctx</span>
       </div>
     </div>
   );
@@ -122,6 +142,10 @@ function WelcomeScreen() {
         >
           Start Chat
         </button>
+
+        <p className="text-[10px] font-mono text-nexus-dim/50 mt-6">
+          Ctrl+N new chat | Ctrl+, settings | Ctrl+M model
+        </p>
       </div>
     </div>
   );
@@ -129,7 +153,7 @@ function WelcomeScreen() {
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
-    <div className="bg-nexus-surface border border-nexus-border rounded-lg p-4">
+    <div className="bg-nexus-surface border border-nexus-border rounded-lg p-4 hover:border-nexus-accent/20 transition-colors">
       <div className="text-xs font-mono text-nexus-dim uppercase tracking-wider mb-1">
         {label}
       </div>

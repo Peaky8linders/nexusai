@@ -37,6 +37,7 @@ export function ChatInput({ onSend, onStop, isGenerating }: ChatInputProps) {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Send a message... (Shift+Enter for newline)"
+          aria-label="Message input"
           disabled={isGenerating}
           rows={1}
           className="flex-1 bg-nexus-surface2 border border-nexus-border rounded-lg px-4 py-3

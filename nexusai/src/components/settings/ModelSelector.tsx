@@ -1,4 +1,6 @@
+import { useEffect, useRef } from "react";
 import { useAppStore } from "../../stores/appStore";
+import { useFocusTrap } from "../../hooks/useKeyboard";
 
 interface ModelSelectorProps {
   onClose: () => void;
@@ -61,14 +63,29 @@ export function ModelSelector({ onClose }: ModelSelectorProps) {
   const activeModelId = useAppStore((s) => s.activeModelId);
   const setActiveModel = useAppStore((s) => s.setActiveModel);
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(modalRef, true);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
   const handleSelect = (id: string) => {
     setActiveModel(id);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-nexus-surface border border-nexus-border rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Select model"
+    >
+      <div ref={modalRef} className="bg-nexus-surface border border-nexus-border rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-nexus-border">
           <div>
             <h2 className="text-lg font-bold">Select Model</h2>
