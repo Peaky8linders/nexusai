@@ -38,17 +38,30 @@ pub fn search_conversations(
             let query_lower = query.to_lowercase();
             let content_lower = content.to_lowercase();
 
-            // Extract a snippet around the match
+            // Extract a snippet around the match.
+            // All slice indices are adjusted to valid UTF-8 char boundaries.
             let snippet = if let Some(pos) = content_lower.find(&query_lower) {
-                let start = pos.saturating_sub(50);
-                let end = (pos + query.len() + 50).min(content.len());
+                let raw_start = pos.saturating_sub(50);
+                let raw_end = (pos + query_lower.len() + 50).min(content.len());
+                // Align to nearest char boundary (scan back from raw_start, forward for raw_end)
+                let start = (0..=raw_start.min(content.len()))
+                    .rev()
+                    .find(|&i| content.is_char_boundary(i))
+                    .unwrap_or(0);
+                let end = (raw_end..=content.len())
+                    .find(|&i| content.is_char_boundary(i))
+                    .unwrap_or(content.len());
                 let mut s = String::new();
                 if start > 0 { s.push_str("..."); }
                 s.push_str(&content[start..end]);
                 if end < content.len() { s.push_str("..."); }
                 s
             } else {
-                content[..content.len().min(100)].to_string()
+                let cap = (0..=content.len().min(100))
+                    .rev()
+                    .find(|&i| content.is_char_boundary(i))
+                    .unwrap_or(0);
+                content[..cap].to_string()
             };
 
             Ok(SearchHit {

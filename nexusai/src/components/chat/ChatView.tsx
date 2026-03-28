@@ -36,18 +36,26 @@ export function ChatView({ conversationId }: ChatViewProps) {
     if (!isTauriApp()) return;
 
     let cancelled = false;
-    import("../../lib/tauri").then(({ listenToStream }) => {
-      if (cancelled) return;
-      listenToStream((chunk) => {
-        if (chunk.done) {
-          setGenerating(false);
-          return;
-        }
-        appendToLastMessage(chunk.conversationId, chunk.content);
-      }).then((unlisten) => {
-        unlistenRef.current = unlisten;
-      });
-    });
+    import("../../lib/tauri")
+      .then(({ listenToStream }) => {
+        if (cancelled) return;
+        listenToStream((chunk) => {
+          if (chunk.done) {
+            setGenerating(false);
+            return;
+          }
+          appendToLastMessage(chunk.conversationId, chunk.content);
+        })
+          .then((unlisten) => {
+            if (cancelled) {
+              unlisten();
+              return;
+            }
+            unlistenRef.current = unlisten;
+          })
+          .catch(console.error);
+      })
+      .catch(console.error);
 
     return () => {
       cancelled = true;

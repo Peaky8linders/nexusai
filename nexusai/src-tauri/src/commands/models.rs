@@ -76,6 +76,17 @@ pub async fn list_models() -> Result<Vec<ModelInfo>, String> {
             tq_compatible: true,
         },
         ModelInfo {
+            id: "qwen3-8b-q4km".into(),
+            name: "Qwen 3 8B".into(),
+            size_bytes: 4_500_000_000,
+            quantization: "Q4_K_M".into(),
+            parameters: "8B".into(),
+            family: "Qwen".into(),
+            downloaded: false,
+            loaded: false,
+            tq_compatible: true,
+        },
+        ModelInfo {
             id: "nomic-embed-text-v1.5".into(),
             name: "Nomic Embed Text v1.5".into(),
             size_bytes: 274_000_000,
