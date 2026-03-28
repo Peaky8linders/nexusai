@@ -10,7 +10,6 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "title": "NexusAI",
     "windows": [
       {
         "title": "NexusAI — Local AI Agent Runtime",

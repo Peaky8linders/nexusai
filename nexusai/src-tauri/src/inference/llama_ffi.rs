@@ -121,6 +121,7 @@ pub struct GenerationStats {
 pub struct LlamaSession {
     model_path: String,
     ctx_params: ContextParams,
+    #[allow(dead_code)]
     sampling_params: SamplingParams,
     stop_flag: Arc<AtomicBool>,
     is_loaded: bool,
@@ -141,7 +142,7 @@ impl LlamaSession {
     pub fn load_model(
         &mut self,
         path: &Path,
-        model_params: &ModelParams,
+        _model_params: &ModelParams,
         ctx_params: &ContextParams,
     ) -> Result<(), String> {
         if !path.exists() {

@@ -60,7 +60,7 @@ impl Embedder {
     }
 
     /// Generate embedding for a single text
-    pub fn embed_text(&self, text: &str) -> Result<Vec<f32>, String> {
+    pub fn embed_text(&self, _text: &str) -> Result<Vec<f32>, String> {
         if !self.is_loaded {
             return Err("Embedding model not loaded".into());
         }

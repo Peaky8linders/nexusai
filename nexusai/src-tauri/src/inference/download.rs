@@ -30,8 +30,9 @@ pub enum DownloadStatus {
     Paused,
 }
 
-/// HuggingFace model file metadata
+/// HuggingFace model file metadata (used for API responses)
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct HfFileInfo {
     size: u64,
     #[serde(rename = "lfs")]
@@ -39,6 +40,7 @@ struct HfFileInfo {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct HfLfsInfo {
     size: u64,
     sha256: Option<String>,

@@ -9,7 +9,7 @@
 //! 6. Repeat until model generates final text (no tool calls)
 
 use super::{execute_tool, parser, ToolCall, ToolDefinition, ToolResult};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 /// Agent configuration
 #[derive(Debug, Clone)]

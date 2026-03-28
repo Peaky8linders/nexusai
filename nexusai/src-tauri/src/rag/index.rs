@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 /// HNSW vector index with optional TQ compression
 pub struct VectorIndex {
     chunks: Vec<Chunk>,
+    #[allow(dead_code)]
     path: PathBuf,
     use_tq: bool,
     tq_bits: u8,
