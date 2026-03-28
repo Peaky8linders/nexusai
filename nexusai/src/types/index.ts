@@ -30,10 +30,10 @@ export interface ModelInfo {
 }
 
 export interface StreamChunk {
-  conversation_id: string;
+  conversationId: string;
   content: string;
   done: boolean;
-  tokens_per_second: number | null;
+  tokensPerSecond: number | null;
 }
 
 export interface AppSettings {
