@@ -58,16 +58,17 @@ pub async fn send_message(
         .map_err(|e| e.to_string())?;
     }
 
-    // Generate response via inference engine
-    let engine_guard = engine.0.lock().map_err(|e| e.to_string())?;
+    // Generate response via inference engine — drop guard before any .await
+    let response = {
+        let engine_guard = engine.0.lock().map_err(|e| e.to_string())?;
+        engine_guard
+            .generate(&request.content)
+            .map_err(|e| e.to_string())?
+    };
 
-    // Stream tokens back to frontend via events
-    let response = engine_guard
-        .generate(&request.content)
-        .map_err(|e| e.to_string())?;
-
-    // Emit streamed chunks
-    for (i, chunk) in response.chunks(32).enumerate() {
+    // Emit streamed chunks (string-safe slicing)
+    let chars: Vec<char> = response.chars().collect();
+    for (i, chunk) in chars.chunks(32).enumerate() {
         let text: String = chunk.iter().collect();
         let stream_chunk = StreamChunk {
             conversation_id: conversation_id.clone(),
