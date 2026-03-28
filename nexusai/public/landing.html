@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexusAI — Local-First AI Agent Runtime</title>
+<meta name="description" content="Run 35B+ parameter models with 64K+ context windows on consumer hardware. TurboQuant-powered. Privacy-first. No cloud.">
+<style>
+  :root {
+    --bg: #05060a; --surface: #0d0f17; --accent: #6ee7b7; --accent2: #818cf8;
+    --text: #e2e8f0; --dim: #64748b; --border: #1e293b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+  /* Hero */
+  .hero { padding: 100px 0 80px; text-align: center; position: relative; }
+  .hero::before { content: ''; position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 600px; height: 600px; background: radial-gradient(circle, rgba(110,231,183,0.06), transparent 70%); border-radius: 50%; }
+  .logo { font-size: 56px; font-weight: 900; letter-spacing: -2px; position: relative; }
+  .logo span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .tagline { font-size: 18px; color: var(--dim); max-width: 480px; margin: 16px auto 40px; }
+  .cta { display: inline-flex; gap: 12px; }
+  .cta a { padding: 14px 32px; border-radius: 10px; font-size: 14px; font-weight: 600; text-decoration: none; transition: all 0.2s; }
+  .cta-primary { background: var(--accent); color: var(--bg); }
+  .cta-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(110,231,183,0.3); }
+  .cta-secondary { border: 1px solid var(--border); color: var(--text); }
+  .cta-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 60px 0; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-align: center; }
+  .stat-val { font-size: 32px; font-weight: 900; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-lbl { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
+
+  /* Features */
+  .features { padding: 80px 0; }
+  .features h2 { font-size: 32px; font-weight: 800; text-align: center; margin-bottom: 48px; }
+  .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .feature { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; transition: all 0.3s; }
+  .feature:hover { border-color: rgba(110,231,183,0.3); transform: translateY(-2px); }
+  .feature h3 { font-size: 16px; color: var(--accent); margin-bottom: 8px; }
+  .feature p { font-size: 13px; color: var(--dim); }
+
+  /* How it works */
+  .how { padding: 80px 0; border-top: 1px solid var(--border); }
+  .how h2 { font-size: 32px; font-weight: 800; text-align: center; margin-bottom: 48px; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+  .step-num { font-size: 48px; font-weight: 900; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .step h3 { font-size: 18px; margin: 8px 0; }
+  .step p { font-size: 13px; color: var(--dim); }
+
+  /* CTA bottom */
+  .bottom-cta { padding: 80px 0; text-align: center; border-top: 1px solid var(--border); }
+  .bottom-cta h2 { font-size: 36px; font-weight: 800; margin-bottom: 16px; }
+  .bottom-cta p { color: var(--dim); margin-bottom: 32px; }
+
+  footer { padding: 32px 0; text-align: center; font-size: 12px; color: var(--dim); border-top: 1px solid var(--border); }
+
+  @media (max-width: 768px) {
+    .stats, .feature-grid, .steps { grid-template-columns: 1fr; }
+    .logo { font-size: 36px; }
+    .hero { padding: 60px 0 40px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="wrap">
+    <div class="logo">Nexus<span>AI</span></div>
+    <p class="tagline">Run 35B+ models with 64K+ context on your hardware. TurboQuant-powered compression. Zero cloud dependency. Full privacy.</p>
+    <div class="cta">
+      <a href="https://github.com/Peaky8linders/nexusai/releases" class="cta-primary">Download</a>
+      <a href="https://github.com/Peaky8linders/nexusai" class="cta-secondary">GitHub</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="stats">
+    <div class="stat"><div class="stat-val">5.3x</div><div class="stat-lbl">KV Compression</div></div>
+    <div class="stat"><div class="stat-val">64K+</div><div class="stat-lbl">Context Tokens</div></div>
+    <div class="stat"><div class="stat-val">$0</div><div class="stat-lbl">Per-Token Cost</div></div>
+    <div class="stat"><div class="stat-val">5MB</div><div class="stat-lbl">App Size</div></div>
+  </div>
+</div>
+
+<div class="features">
+  <div class="wrap">
+    <h2>Everything runs locally</h2>
+    <div class="feature-grid">
+      <div class="feature">
+        <h3>TurboQuant KV Cache</h3>
+        <p>Google's compression algorithm reduces KV cache memory by 5.3x. A 35B model that needed 48GB for 64K context now fits in 16GB.</p>
+      </div>
+      <div class="feature">
+        <h3>Agent Runtime</h3>
+        <p>Built-in tool calling with approval gates. Read files, run commands, fetch web — your AI can take action, not just chat.</p>
+      </div>
+      <div class="feature">
+        <h3>RAG Pipeline</h3>
+        <p>Drag-drop your codebase or docs. TQ-compressed vector index means 6x more documents fit in memory. Ask questions, get answers.</p>
+      </div>
+      <div class="feature">
+        <h3>Native Desktop</h3>
+        <p>5MB Tauri app, not a 150MB Electron wrapper. Rust backend with direct FFI to llama.cpp. Fast startup, low memory overhead.</p>
+      </div>
+      <div class="feature">
+        <h3>MCP Plugins</h3>
+        <p>Model Context Protocol support. Install plugins for calendar, email, file system, web browsing. Extend your agent's capabilities.</p>
+      </div>
+      <div class="feature">
+        <h3>Privacy First</h3>
+        <p>Zero telemetry. No cloud calls. No API keys. Everything runs on your hardware. Your data never leaves your machine.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="how">
+  <div class="wrap">
+    <h2>Three steps to local AI</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Download</h3>
+        <p>Grab the installer for Mac, Windows, or Linux. 5MB download, no dependencies.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Pick a model</h3>
+        <p>Choose from curated GGUF models — Qwen, Llama, Gemma, Phi. One-click download from HuggingFace.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Chat locally</h3>
+        <p>TurboQuant compression activates automatically. 64K+ context on 16GB RAM. No cloud needed.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-cta">
+  <div class="wrap">
+    <h2>Your AI, Your Hardware, Your Data</h2>
+    <p>Join the local AI revolution. No subscriptions. No per-token pricing. Just your models running on your machine.</p>
+    <div class="cta">
+      <a href="https://github.com/Peaky8linders/nexusai/releases" class="cta-primary">Download NexusAI</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    NexusAI is open source under MIT License.
+    Powered by <a href="https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/" style="color:var(--accent);text-decoration:none">TurboQuant</a> and <a href="https://github.com/ggml-org/llama.cpp" style="color:var(--accent);text-decoration:none">llama.cpp</a>.
+  </div>
+</footer>
+
+</body>
+</html>

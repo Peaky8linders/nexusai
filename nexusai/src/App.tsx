@@ -5,6 +5,7 @@ import { SettingsPanel } from "./components/settings/SettingsPanel";
 import { ModelSelector } from "./components/settings/ModelSelector";
 import { RagExplorer } from "./components/rag/RagExplorer";
 import { MemoryPanel } from "./components/settings/MemoryPanel";
+import { BenchmarkDashboard } from "./components/settings/BenchmarkDashboard";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastContainer } from "./components/Toast";
 import { useKeyboard } from "./hooks/useKeyboard";
@@ -68,6 +69,7 @@ function App() {
             )}
 
             {viewMode === "memory" && <MemoryPanel />}
+            {viewMode === "bench" && <BenchmarkDashboard />}
           </ErrorBoundary>
         </main>
 

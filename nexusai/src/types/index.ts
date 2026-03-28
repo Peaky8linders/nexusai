@@ -1,4 +1,4 @@
-export type ViewMode = "chat" | "rag" | "memory";
+export type ViewMode = "chat" | "rag" | "memory" | "bench";
 
 export interface Message {
   id: string;
