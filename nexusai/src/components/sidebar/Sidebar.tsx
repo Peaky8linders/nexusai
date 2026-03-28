@@ -1,6 +1,5 @@
 import { useAppStore } from "../../stores/appStore";
-
-type ViewMode = "chat" | "rag" | "memory";
+import type { ViewMode } from "../../types";
 
 interface SidebarProps {
   onOpenSettings: () => void;

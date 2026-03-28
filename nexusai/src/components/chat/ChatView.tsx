@@ -18,15 +18,19 @@ export function ChatView({ conversationId }: ChatViewProps) {
 
   const conversation = conversations.find((c) => c.id === conversationId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const stopRef = useRef(false);
 
+  // Scroll to bottom only when message count changes (not every chunk)
+  const messageCount = conversation?.messages.length ?? 0;
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversation?.messages]);
+  }, [messageCount]);
 
   const handleSend = async (content: string) => {
-    if (!content.trim() || isGenerating) return;
+    if (!content.trim() || useAppStore.getState().isGenerating) return;
 
-    // Add user message
+    stopRef.current = false;
+
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
@@ -36,7 +40,6 @@ export function ChatView({ conversationId }: ChatViewProps) {
     addMessage(conversationId, userMsg);
     setGenerating(true);
 
-    // Simulate streaming response (replaced by Tauri IPC in production)
     const assistantMsg: Message = {
       id: crypto.randomUUID(),
       role: "assistant",
@@ -45,10 +48,12 @@ export function ChatView({ conversationId }: ChatViewProps) {
     };
     addMessage(conversationId, assistantMsg);
 
-    // Stub: simulate token streaming
+    // Stub: simulate token streaming with cancellation support
     const stubResponse = generateStubResponse(content, activeModelId);
     for (let i = 0; i < stubResponse.length; i += 3) {
+      if (stopRef.current) break;
       await new Promise((r) => setTimeout(r, 15));
+      if (stopRef.current) break;
       appendToLastMessage(conversationId, stubResponse.slice(i, i + 3));
     }
 
@@ -56,6 +61,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
   };
 
   const handleStop = () => {
+    stopRef.current = true;
     setGenerating(false);
   };
 
@@ -65,13 +71,13 @@ export function ChatView({ conversationId }: ChatViewProps) {
       <div className="flex items-center justify-between px-6 py-2 border-b border-nexus-border bg-nexus-surface/30">
         <h2 className="font-semibold text-sm truncate">{conversation?.title ?? "Chat"}</h2>
         <span className="text-[10px] font-mono text-nexus-dim">
-          {conversation?.messages.length ?? 0} messages
+          {messageCount} messages
         </span>
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-        {conversation?.messages.length === 0 && (
+        {messageCount === 0 && (
           <div className="flex items-center justify-center h-full text-nexus-dim text-sm">
             Send a message to start the conversation.
           </div>

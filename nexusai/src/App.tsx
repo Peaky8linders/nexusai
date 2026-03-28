@@ -6,8 +6,7 @@ import { ModelSelector } from "./components/settings/ModelSelector";
 import { RagExplorer } from "./components/rag/RagExplorer";
 import { MemoryPanel } from "./components/settings/MemoryPanel";
 import { useAppStore } from "./stores/appStore";
-
-type ViewMode = "chat" | "rag" | "memory";
+import type { ViewMode } from "./types";
 
 function App() {
   const [showSettings, setShowSettings] = useState(false);
@@ -24,10 +23,7 @@ function App() {
       />
       <main className="flex-1 flex flex-col min-w-0">
         {/* Top bar with model selector */}
-        <TopBar
-          onOpenModelSelector={() => setShowModelSelector(true)}
-          viewMode={viewMode}
-        />
+        <TopBar onOpenModelSelector={() => setShowModelSelector(true)} />
 
         {viewMode === "chat" && (
           activeConversation ? (
@@ -66,7 +62,6 @@ function TopBar({
   onOpenModelSelector,
 }: {
   onOpenModelSelector: () => void;
-  viewMode: ViewMode;
 }) {
   const activeModelId = useAppStore((s) => s.activeModelId);
 

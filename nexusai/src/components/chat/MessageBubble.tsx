@@ -31,7 +31,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           </div>
         )}
 
-        {message.tokensPerSecond && (
+        {message.tokensPerSecond != null && message.tokensPerSecond > 0 && (
           <div className="mt-2 text-[10px] font-mono text-nexus-dim">
             {message.tokensPerSecond.toFixed(1)} tok/s
           </div>

@@ -1,3 +1,5 @@
+export type ViewMode = "chat" | "rag" | "memory";
+
 export interface Message {
   id: string;
   role: "user" | "assistant" | "system";
