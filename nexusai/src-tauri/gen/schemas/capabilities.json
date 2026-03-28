@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default capabilities for the NexusAI desktop app","local":true,"windows":["main"],"permissions":["core:default","shell:allow-open","dialog:default",{"identifier":"fs:allow-read","allow":[{"path":"$APPDATA/**"},{"path":"$HOME/**"},{"path":"$DOWNLOAD/**"}]},{"identifier":"fs:allow-write","allow":[{"path":"$APPDATA/**"}]}]}}

@@ -79,6 +79,7 @@ export function Sidebar({ onOpenSettings, viewMode, onChangeView }: SidebarProps
                   }}
                   className="opacity-0 group-hover:opacity-100 text-nexus-dim hover:text-red-400
                              transition-opacity text-xs ml-2"
+                  aria-label={`Delete conversation ${conv.title}`}
                 >
                   x
                 </button>
