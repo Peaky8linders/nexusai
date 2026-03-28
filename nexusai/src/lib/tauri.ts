@@ -9,7 +9,7 @@
  * wire format matches automatically — no mapping layer needed.
  */
 
-import type { Conversation, ModelInfo, AppSettings, SystemInfo, StreamChunk } from "../types";
+import type { Conversation, ModelInfo, AppSettings, SystemInfo, StreamChunk, DownloadProgress } from "../types";
 
 const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
@@ -84,7 +84,7 @@ export async function getSystemInfo(): Promise<SystemInfo> {
   return invoke<SystemInfo>("get_system_info");
 }
 
-// ── Event listening (for streaming) ────────────────────────────
+// ── Event listening ────────────────────────────────────────────
 
 export async function listenToStream(
   callback: (chunk: StreamChunk) => void,
@@ -92,6 +92,19 @@ export async function listenToStream(
   if (isTauri) {
     const { listen } = await import("@tauri-apps/api/event");
     const unlisten = await listen<StreamChunk>("chat:stream", (event) => {
+      callback(event.payload);
+    });
+    return unlisten;
+  }
+  return () => {};
+}
+
+export async function listenToDownloadProgress(
+  callback: (progress: DownloadProgress) => void,
+): Promise<() => void> {
+  if (isTauri) {
+    const { listen } = await import("@tauri-apps/api/event");
+    const unlisten = await listen<DownloadProgress>("download:progress", (event) => {
       callback(event.payload);
     });
     return unlisten;

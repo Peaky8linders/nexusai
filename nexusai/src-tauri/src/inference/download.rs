@@ -9,6 +9,7 @@ use tokio::io::AsyncWriteExt;
 
 /// Download progress state
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DownloadProgress {
     pub model_id: String,
     pub file_name: String,
@@ -21,6 +22,7 @@ pub struct DownloadProgress {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub enum DownloadStatus {
     Pending,
     Downloading,

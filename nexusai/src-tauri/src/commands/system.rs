@@ -1,4 +1,5 @@
 use serde::Serialize;
+use sysinfo::System;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -16,13 +17,13 @@ pub struct SystemInfo {
 
 #[tauri::command]
 pub async fn get_system_info() -> Result<SystemInfo, String> {
-    let total_memory = sys_info_total_memory();
+    let total_memory = sys_total_memory_gb();
 
     let (recommended_ctx, recommended_bits) = match total_memory {
-        m if m >= 64.0 => (131072, 3), // 64GB+ → 128K context, TQ3
-        m if m >= 32.0 => (65536, 3),  // 32GB → 64K, TQ3
-        m if m >= 16.0 => (32768, 3),  // 16GB → 32K, TQ3
-        _ => (16384, 4),               // <16GB → 16K, TQ4 (less compression but faster)
+        m if m >= 64.0 => (131072, 3), // 64 GB+ → 128K context, TQ3
+        m if m >= 32.0 => (65536, 3),  // 32 GB  → 64K,  TQ3
+        m if m >= 16.0 => (32768, 3),  // 16 GB  → 32K,  TQ3
+        _ => (16384, 4),               // <16 GB → 16K,  TQ4 (less compression, faster)
     };
 
     Ok(SystemInfo {
@@ -38,16 +39,11 @@ pub async fn get_system_info() -> Result<SystemInfo, String> {
     })
 }
 
-fn sys_info_total_memory() -> f64 {
-    // Rough cross-platform memory detection — returns placeholder values.
-    // TODO: Use sysinfo crate for real detection.
-    if cfg!(target_os = "macos") {
-        8.0
-    } else if cfg!(target_os = "windows") {
-        16.0
-    } else {
-        16.0
-    }
+/// Returns installed system RAM in GB using the sysinfo crate.
+fn sys_total_memory_gb() -> f64 {
+    let mut sys = System::new();
+    sys.refresh_memory();
+    sys.total_memory() as f64 / 1_073_741_824.0 // bytes → GB
 }
 
 fn detect_gpu_name() -> Option<String> {

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFocusTrap } from "../../hooks/useKeyboard";
+import { isTauriApp } from "../../lib/tauri";
+import { useToastStore } from "../Toast";
 
 interface SettingsPanelProps {
   onClose: () => void;
@@ -10,15 +12,54 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
   const [contextLength, setContextLength] = useState(65536);
   const [temperature, setTemperature] = useState(0.7);
   const [gpuLayers, setGpuLayers] = useState(-1);
+  const [saving, setSaving] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  const addToast = useToastStore((s) => s.addToast);
 
   useFocusTrap(modalRef, true);
+
+  // Load persisted settings from backend on mount
+  useEffect(() => {
+    if (!isTauriApp()) return;
+    import("../../lib/tauri").then(({ getSettings }) => {
+      getSettings()
+        .then((s) => {
+          setTqBits(s.tqKvBits);
+          setContextLength(s.contextLength);
+          setTemperature(s.temperature);
+          setGpuLayers(s.gpuLayers);
+        })
+        .catch(console.error);
+    }).catch(console.error);
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
+
+  const handleSave = async () => {
+    if (!isTauriApp()) { onClose(); return; }
+    setSaving(true);
+    try {
+      const { updateSettings, getSettings } = await import("../../lib/tauri");
+      const current = await getSettings();
+      await updateSettings({
+        ...current,
+        tqKvBits: tqBits,
+        contextLength,
+        temperature,
+        gpuLayers,
+      });
+      addToast("success", "Settings saved");
+      onClose();
+    } catch (e) {
+      addToast("error", `Save failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div
@@ -64,7 +105,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
                     >
                       TQ{bits}
                       <span className="block text-[10px] mt-0.5">
-                        {bits === 3 ? "5.3x compress" : "4x compress"}
+                        {bits === 3 ? "5.3× compress" : "4× compress"}
                       </span>
                     </button>
                   ))}
@@ -168,6 +209,25 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
               </div>
             </div>
           </section>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-nexus-border">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-nexus-dim hover:text-nexus-text transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-2 rounded-lg text-sm font-mono bg-nexus-accent/10 border
+                       border-nexus-accent/30 text-nexus-accent hover:bg-nexus-accent/20
+                       transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving…" : "Save Settings"}
+          </button>
         </div>
       </div>
     </div>

@@ -49,6 +49,17 @@ export interface AppSettings {
   showTokenStats: boolean;
 }
 
+export interface DownloadProgress {
+  modelId: string;
+  bytesDownloaded: number;
+  bytesTotal: number;
+  percent: number;
+  speedMbps: number;
+  etaSeconds: number;
+  status: "downloading" | "complete" | "error";
+  error: string | null;
+}
+
 export interface SystemInfo {
   os: string;
   arch: string;
