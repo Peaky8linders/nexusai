@@ -28,7 +28,7 @@ export function Sidebar({ onOpenSettings, viewMode, onChangeView }: SidebarProps
 
       {/* View tabs */}
       <div className="flex border-b border-nexus-border">
-        {(["chat", "rag", "memory"] as const).map((mode) => (
+        {(["chat", "rag", "memory", "bench"] as const).map((mode) => (
           <button
             key={mode}
             onClick={() => onChangeView(mode)}
@@ -38,7 +38,7 @@ export function Sidebar({ onOpenSettings, viewMode, onChangeView }: SidebarProps
                           : "text-nexus-dim hover:text-nexus-text"
                         }`}
           >
-            {mode === "chat" ? "Chat" : mode === "rag" ? "RAG" : "Memory"}
+            {mode === "chat" ? "Chat" : mode === "rag" ? "RAG" : mode === "memory" ? "Mem" : "Bench"}
           </button>
         ))}
       </div>
