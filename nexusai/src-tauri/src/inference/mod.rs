@@ -83,7 +83,7 @@ impl InferenceEngine {
             self.tq_config.bits,
             self.tq_config.compression_ratio(),
             self.tq_config.max_context,
-            &prompt[..prompt.len().min(100)]
+            &prompt[..(0..=prompt.len().min(100)).rev().find(|&i| prompt.is_char_boundary(i)).unwrap_or(0)]
         ))
     }
 

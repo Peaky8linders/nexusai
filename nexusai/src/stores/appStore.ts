@@ -77,10 +77,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeConversationId: id,
     }));
 
-    // Persist to backend if connected
+    // Persist to backend if connected — capture modelId before async import
     if (get().backendConnected) {
+      const modelId = get().activeModelId ?? "";
       import("../lib/tauri").then(({ createConversation: tauriCreate }) => {
-        tauriCreate(title, get().activeModelId ?? "").catch(console.warn);
+        tauriCreate(title, modelId).catch(console.warn);
       });
     }
   },
@@ -95,8 +96,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
 
     if (get().backendConnected) {
+      const convId = id;
       import("../lib/tauri").then(({ deleteConversation: tauriDelete }) => {
-        tauriDelete(id).catch(console.warn);
+        tauriDelete(convId).catch(console.warn);
       });
     }
   },

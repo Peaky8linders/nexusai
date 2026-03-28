@@ -47,11 +47,12 @@ export function useFocusTrap(containerRef: React.RefObject<HTMLElement | null>, 
     const focusable = container.querySelectorAll<HTMLElement>(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
+    if (focusable.length === 0) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
 
     // Focus first element on mount
-    first?.focus();
+    first.focus();
 
     const handler = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
