@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State};
 
-use crate::inference::EngineState;
+use crate::inference::{EngineState, OllamaMessage};
 use crate::memory::DbState;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -62,32 +62,39 @@ pub async fn send_message(
         .map_err(|e| e.to_string())?;
     }
 
-    // Generate response via inference engine — drop guard before any .await
-    let response = {
-        let engine_guard = engine.0.lock().map_err(|e| e.to_string())?;
-        engine_guard
-            .generate(&request.content)
-            .map_err(|e| e.to_string())?
-    };
-
-    // Emit streamed chunks (string-safe slicing)
-    let chars: Vec<char> = response.chars().collect();
-    for (i, chunk) in chars.chunks(32).enumerate() {
-        let text: String = chunk.iter().collect();
-        let stream_chunk = StreamChunk {
-            conversation_id: conversation_id.clone(),
-            content: text,
-            done: false,
-            tokens_per_second: Some(25.0), // placeholder
-        };
-        app.emit("chat:stream", &stream_chunk)
+    // Build message history from DB for context
+    let ollama_messages = {
+        let conn = db.0.lock().map_err(|e| e.to_string())?;
+        let db_messages = crate::memory::get_messages(&conn, &conversation_id)
             .map_err(|e| e.to_string())?;
 
-        // Small delay to simulate streaming (removed when real inference is wired)
-        if i > 0 {
-            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-        }
-    }
+        db_messages
+            .into_iter()
+            .map(|m| OllamaMessage {
+                role: m.role,
+                content: m.content,
+            })
+            .collect::<Vec<_>>()
+    };
+
+    // Stream response from Ollama
+    let conv_id = conversation_id.clone();
+    let app_clone = app.clone();
+
+    let response = {
+        let engine_guard = engine.0.lock().await;
+        engine_guard
+            .stream_chat(ollama_messages, move |token, tps| {
+                let chunk = StreamChunk {
+                    conversation_id: conv_id.clone(),
+                    content: token.to_string(),
+                    done: false,
+                    tokens_per_second: tps,
+                };
+                app_clone.emit("chat:stream", &chunk).ok();
+            })
+            .await?
+    };
 
     // Emit done signal
     app.emit(
@@ -113,7 +120,7 @@ pub async fn send_message(
 
 #[tauri::command]
 pub async fn stop_generation(engine: State<'_, EngineState>) -> Result<(), String> {
-    let engine_guard = engine.0.lock().map_err(|e| e.to_string())?;
+    let engine_guard = engine.0.lock().await;
     engine_guard.stop();
     Ok(())
 }
