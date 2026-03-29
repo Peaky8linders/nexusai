@@ -28,7 +28,7 @@ pub fn run() {
             app.manage(memory::DbState(std::sync::Mutex::new(db)));
 
             let engine = inference::InferenceEngine::new();
-            app.manage(inference::EngineState(std::sync::Mutex::new(engine)));
+            app.manage(inference::EngineState(tokio::sync::Mutex::new(engine)));
 
             tracing::info!("NexusAI initialized, data dir: {:?}", app_data);
             Ok(())

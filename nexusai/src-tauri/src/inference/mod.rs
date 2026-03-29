@@ -3,22 +3,59 @@ pub mod llama_ffi;
 pub mod tq_config;
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
+use std::sync::Arc;
+
+use futures::StreamExt;
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
 
 use tq_config::TurboQuantConfig;
 
 /// Wraps the inference engine in Tauri managed state
-pub struct EngineState(pub Mutex<InferenceEngine>);
+pub struct EngineState(pub tokio::sync::Mutex<InferenceEngine>);
 
-/// Core inference engine that manages model loading and text generation.
-///
-/// In Phase 1, this is a stub that returns placeholder text.
-/// It will be replaced with llama.cpp FFI bindings once the C library is built.
+/// Ollama chat message format
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OllamaMessage {
+    pub role: String,
+    pub content: String,
+}
+
+/// Ollama streaming response chunk (one NDJSON line)
+#[derive(Debug, Deserialize)]
+pub struct OllamaStreamChunk {
+    pub message: Option<OllamaMessage>,
+    pub done: bool,
+    #[serde(default)]
+    pub eval_count: Option<u64>,
+    #[serde(default)]
+    pub eval_duration: Option<u64>,
+}
+
+/// Core inference engine that manages Ollama connectivity and model state.
 pub struct InferenceEngine {
     model_loaded: bool,
     model_id: Option<String>,
+    ollama_model: Option<String>,
+    ollama_url: String,
     tq_config: TurboQuantConfig,
-    stop_flag: AtomicBool,
+    stop_flag: Arc<AtomicBool>,
+    http_client: Client,
+}
+
+/// Map internal model catalog IDs to Ollama model names
+fn catalog_id_to_ollama(model_id: &str) -> String {
+    match model_id {
+        "llama3.2-3b" => "llama3.2:3b".to_string(),
+        "qwen3-30b-a3b" => "qwen3:30b-a3b".to_string(),
+        "qwen3.5-35b-a3b-q4km" => "qwen3:30b-a3b".to_string(),
+        "qwen3-8b-q4km" => "qwen3:8b".to_string(),
+        "llama3.3-70b-q4km" => "llama3.3:70b".to_string(),
+        "gemma3-27b-q4km" => "gemma3:27b".to_string(),
+        "phi4-14b-q4km" => "phi4:14b".to_string(),
+        // If it doesn't match a catalog ID, assume it's already an Ollama model name
+        other => other.to_string(),
+    }
 }
 
 impl InferenceEngine {
@@ -26,26 +63,27 @@ impl InferenceEngine {
         Self {
             model_loaded: false,
             model_id: None,
+            ollama_model: None,
+            ollama_url: "http://localhost:11434".to_string(),
             tq_config: TurboQuantConfig::default(),
-            stop_flag: AtomicBool::new(false),
+            stop_flag: Arc::new(AtomicBool::new(false)),
+            http_client: Client::new(),
         }
     }
 
     pub fn load_model(&mut self, model_id: &str, tq_bits: u8) -> Result<(), String> {
+        let ollama_name = catalog_id_to_ollama(model_id);
         tracing::info!(
-            "Loading model {} with TurboQuant TQ{} KV cache",
+            "Loading model {} (ollama: {}) with TurboQuant TQ{} KV cache",
             model_id,
+            ollama_name,
             tq_bits
         );
 
         self.tq_config = TurboQuantConfig::new(tq_bits);
         self.model_id = Some(model_id.to_string());
+        self.ollama_model = Some(ollama_name);
         self.model_loaded = true;
-
-        // TODO: Replace with actual llama.cpp model loading:
-        // 1. llama_model_load(path, params)
-        // 2. llama_context_new(model, ctx_params) with TQ KV cache type
-        // 3. Set cache_type_k = GGML_TYPE_TQ3_0 / TQ4_0
 
         Ok(())
     }
@@ -54,37 +92,120 @@ impl InferenceEngine {
         tracing::info!("Unloading model");
         self.model_loaded = false;
         self.model_id = None;
-        // TODO: llama_free(ctx), llama_model_free(model)
+        self.ollama_model = None;
     }
 
-    pub fn generate(&self, prompt: &str) -> Result<String, String> {
+    /// Stream a chat response from Ollama, calling `on_token` for each chunk.
+    /// Returns the full accumulated response text.
+    pub async fn stream_chat(
+        &self,
+        messages: Vec<OllamaMessage>,
+        on_token: impl Fn(&str, Option<f64>) + Send,
+    ) -> Result<String, String> {
         if !self.model_loaded {
             return Err("No model loaded. Select and load a model first.".into());
         }
 
+        let model = self.ollama_model.as_deref().unwrap_or("qwen3:8b");
         self.stop_flag.store(false, Ordering::Relaxed);
 
-        // Stub response — will be replaced with actual llama.cpp inference
-        let model_name = self.model_id.as_deref().unwrap_or("unknown");
-        Ok(format!(
-            "**[NexusAI Stub Response]**\n\n\
-             Model: `{}`\n\
-             TurboQuant: TQ{} KV cache ({:.1}x compression)\n\
-             Context: {} tokens\n\n\
-             Your prompt: \"{}\"\n\n\
-             ---\n\n\
-             This is a placeholder response. Once the llama.cpp fork with TurboQuant \
-             support is compiled and linked, this will produce real inference output.\n\n\
-             **Next steps:**\n\
-             1. Install Rust toolchain: `rustup-init`\n\
-             2. Fork llama.cpp and apply TQ patches\n\
-             3. Build with `cargo tauri dev`\n",
-            model_name,
-            self.tq_config.bits,
-            self.tq_config.compression_ratio(),
-            self.tq_config.max_context,
-            &prompt[..(0..=prompt.len().min(100)).rev().find(|&i| prompt.is_char_boundary(i)).unwrap_or(0)]
-        ))
+        let url = format!("{}/api/chat", self.ollama_url);
+        let body = serde_json::json!({
+            "model": model,
+            "messages": messages,
+            "stream": true,
+        });
+
+        let resp = self
+            .http_client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| {
+                if e.is_connect() {
+                    "Ollama is not running. Start it with `ollama serve` or check that it's running on localhost:11434.".to_string()
+                } else {
+                    format!("Ollama request failed: {}", e)
+                }
+            })?;
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body_text = resp.text().await.unwrap_or_default();
+            return Err(format!("Ollama returned {}: {}", status, body_text));
+        }
+
+        let mut full_response = String::new();
+        let mut bytes_buf = Vec::new();
+        let mut stream = resp.bytes_stream();
+
+        while let Some(chunk_result) = stream.next().await {
+            if self.stop_flag.load(Ordering::Relaxed) {
+                tracing::info!("Generation stopped by user");
+                break;
+            }
+
+            let chunk = chunk_result.map_err(|e| format!("Stream error: {}", e))?;
+            bytes_buf.extend_from_slice(&chunk);
+
+            // Process complete NDJSON lines from the buffer
+            while let Some(newline_pos) = bytes_buf.iter().position(|&b| b == b'\n') {
+                let line: Vec<u8> = bytes_buf.drain(..=newline_pos).collect();
+                let line_str = String::from_utf8_lossy(&line);
+                let trimmed = line_str.trim();
+
+                if trimmed.is_empty() {
+                    continue;
+                }
+
+                match serde_json::from_str::<OllamaStreamChunk>(trimmed) {
+                    Ok(parsed) => {
+                        if let Some(msg) = &parsed.message {
+                            if !msg.content.is_empty() {
+                                full_response.push_str(&msg.content);
+
+                                // Calculate tokens/sec from final chunk
+                                let tps = if parsed.done {
+                                    match (parsed.eval_count, parsed.eval_duration) {
+                                        (Some(count), Some(dur)) if dur > 0 => {
+                                            Some(count as f64 / (dur as f64 / 1_000_000_000.0))
+                                        }
+                                        _ => None,
+                                    }
+                                } else {
+                                    None
+                                };
+
+                                on_token(&msg.content, tps);
+                            }
+                        }
+
+                        if parsed.done {
+                            // Extract final stats
+                            let tps = match (parsed.eval_count, parsed.eval_duration) {
+                                (Some(count), Some(dur)) if dur > 0 => {
+                                    Some(count as f64 / (dur as f64 / 1_000_000_000.0))
+                                }
+                                _ => None,
+                            };
+                            if let Some(tps_val) = tps {
+                                tracing::info!(
+                                    "Generation complete: {:.1} tokens/sec",
+                                    tps_val
+                                );
+                            }
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to parse Ollama chunk: {} — line: {}", e, trimmed);
+                    }
+                }
+            }
+        }
+
+        Ok(full_response)
     }
 
     pub fn stop(&self) {
@@ -93,5 +214,13 @@ impl InferenceEngine {
 
     pub fn is_loaded(&self) -> bool {
         self.model_loaded
+    }
+
+    pub fn stop_flag(&self) -> Arc<AtomicBool> {
+        self.stop_flag.clone()
+    }
+
+    pub fn ollama_url(&self) -> &str {
+        &self.ollama_url
     }
 }

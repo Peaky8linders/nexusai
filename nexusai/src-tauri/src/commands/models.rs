@@ -45,6 +45,28 @@ struct ModelEntry {
 
 const MODEL_CATALOG: &[ModelEntry] = &[
     ModelEntry {
+        id: "llama3.2-3b",
+        name: "Llama 3.2 3B",
+        size_bytes: 2_000_000_000,
+        quantization: "Q4_K_M",
+        parameters: "3B",
+        family: "Llama",
+        tq_compatible: true,
+        hf_repo: "",
+        hf_filename: "",
+    },
+    ModelEntry {
+        id: "qwen3-30b-a3b",
+        name: "Qwen 3 30B-A3B",
+        size_bytes: 18_000_000_000,
+        quantization: "Q4_K_M",
+        parameters: "30B (3B active MoE)",
+        family: "Qwen",
+        tq_compatible: true,
+        hf_repo: "",
+        hf_filename: "",
+    },
+    ModelEntry {
         id: "qwen3.5-35b-a3b-q4km",
         name: "Qwen 3.5 35B-A3B",
         size_bytes: 19_000_000_000,
@@ -119,11 +141,36 @@ fn models_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
         .map_err(|e| e.to_string())
 }
 
+/// Ollama model tag from /api/tags response
+#[derive(Debug, Deserialize)]
+struct OllamaTagsResponse {
+    models: Vec<OllamaModelTag>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OllamaModelTag {
+    name: String,
+}
+
+/// Map catalog IDs to their Ollama model names for download detection
+fn catalog_id_to_ollama_name(id: &str) -> Option<&str> {
+    match id {
+        "llama3.2-3b" => Some("llama3.2:3b"),
+        "qwen3-30b-a3b" => Some("qwen3:30b-a3b"),
+        "qwen3.5-35b-a3b-q4km" => Some("qwen3:30b-a3b"),
+        "qwen3-8b-q4km" => Some("qwen3:8b"),
+        "llama3.3-70b-q4km" => Some("llama3.3:70b"),
+        "gemma3-27b-q4km" => Some("gemma3:27b"),
+        "phi4-14b-q4km" => Some("phi4:14b"),
+        _ => None,
+    }
+}
+
 #[tauri::command]
 pub async fn list_models(app: AppHandle) -> Result<Vec<ModelInfo>, String> {
     let dir = models_dir(&app)?;
-    // Collect downloaded filenames for O(1) lookup
-    let downloaded: std::collections::HashSet<String> = if dir.exists() {
+    // Collect downloaded GGUF filenames for O(1) lookup
+    let downloaded_gguf: std::collections::HashSet<String> = if dir.exists() {
         crate::inference::download::scan_models_dir(&dir)
             .await
             .into_iter()
@@ -137,18 +184,40 @@ pub async fn list_models(app: AppHandle) -> Result<Vec<ModelInfo>, String> {
         std::collections::HashSet::new()
     };
 
+    // Query Ollama for installed models
+    let ollama_models: std::collections::HashSet<String> = match reqwest::Client::new()
+        .get("http://localhost:11434/api/tags")
+        .send()
+        .await
+    {
+        Ok(resp) => resp
+            .json::<OllamaTagsResponse>()
+            .await
+            .map(|r| r.models.into_iter().map(|m| m.name).collect())
+            .unwrap_or_default(),
+        Err(_) => std::collections::HashSet::new(),
+    };
+
     Ok(MODEL_CATALOG
         .iter()
-        .map(|e| ModelInfo {
-            id: e.id.into(),
-            name: e.name.into(),
-            size_bytes: e.size_bytes,
-            quantization: e.quantization.into(),
-            parameters: e.parameters.into(),
-            family: e.family.into(),
-            downloaded: downloaded.contains(&e.hf_filename.to_lowercase()),
-            loaded: false, // TODO: check against active engine model
-            tq_compatible: e.tq_compatible,
+        .map(|e| {
+            let gguf_downloaded = !e.hf_filename.is_empty()
+                && downloaded_gguf.contains(&e.hf_filename.to_lowercase());
+            let ollama_available = catalog_id_to_ollama_name(e.id)
+                .map(|name| ollama_models.contains(name))
+                .unwrap_or(false);
+
+            ModelInfo {
+                id: e.id.into(),
+                name: e.name.into(),
+                size_bytes: e.size_bytes,
+                quantization: e.quantization.into(),
+                parameters: e.parameters.into(),
+                family: e.family.into(),
+                downloaded: gguf_downloaded || ollama_available,
+                loaded: false,
+                tq_compatible: e.tq_compatible,
+            }
         })
         .collect())
 }
@@ -254,14 +323,14 @@ pub async fn load_model(
     if bits != 3 && bits != 4 {
         return Err(format!("Invalid tq_bits: {}. Must be 3 or 4.", bits));
     }
-    let mut engine_guard = engine.0.lock().map_err(|e| e.to_string())?;
+    let mut engine_guard = engine.0.lock().await;
     engine_guard.load_model(&model_id, bits)?;
     Ok(())
 }
 
 #[tauri::command]
 pub async fn unload_model(engine: State<'_, EngineState>) -> Result<(), String> {
-    let mut engine_guard = engine.0.lock().map_err(|e| e.to_string())?;
+    let mut engine_guard = engine.0.lock().await;
     engine_guard.unload();
     Ok(())
 }
