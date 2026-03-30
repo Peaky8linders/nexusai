@@ -167,7 +167,15 @@ fn catalog_id_to_ollama_name(id: &str) -> Option<&str> {
 }
 
 #[tauri::command]
-pub async fn list_models(app: AppHandle) -> Result<Vec<ModelInfo>, String> {
+pub async fn list_models(app: AppHandle, engine: State<'_, EngineState>) -> Result<Vec<ModelInfo>, String> {
+    let loaded_model_id = {
+        let engine_guard = engine.0.lock().await;
+        if engine_guard.is_loaded() {
+            engine_guard.model_id().map(|s| s.to_string())
+        } else {
+            None
+        }
+    };
     let dir = models_dir(&app)?;
     // Collect downloaded GGUF filenames for O(1) lookup
     let downloaded_gguf: std::collections::HashSet<String> = if dir.exists() {
@@ -215,7 +223,7 @@ pub async fn list_models(app: AppHandle) -> Result<Vec<ModelInfo>, String> {
                 parameters: e.parameters.into(),
                 family: e.family.into(),
                 downloaded: gguf_downloaded || ollama_available,
-                loaded: false,
+                loaded: loaded_model_id.as_deref() == Some(e.id),
                 tq_compatible: e.tq_compatible,
             }
         })

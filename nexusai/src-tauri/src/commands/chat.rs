@@ -41,6 +41,20 @@ pub struct StreamChunk {
     pub tokens_per_second: Option<f64>,
 }
 
+/// Helper: emit done signal to frontend
+fn emit_done(app: &AppHandle, conversation_id: &str) {
+    app.emit(
+        "chat:stream",
+        &StreamChunk {
+            conversation_id: conversation_id.to_string(),
+            content: String::new(),
+            done: true,
+            tokens_per_second: None,
+        },
+    )
+    .ok();
+}
+
 #[tauri::command]
 pub async fn send_message(
     app: AppHandle,
@@ -49,24 +63,26 @@ pub async fn send_message(
     db: State<'_, DbState>,
 ) -> Result<(), String> {
     let conversation_id = request.conversation_id.clone();
+    let content = request.content.trim().to_string();
+
+    if content.is_empty() {
+        return Err("Message content is empty.".into());
+    }
+
+    tracing::info!("send_message: conv={}, content_len={}", conversation_id, content.len());
 
     // Store the user message
     {
         let conn = db.0.lock().map_err(|e| e.to_string())?;
-        crate::memory::store_message(
-            &conn,
-            &conversation_id,
-            "user",
-            &request.content,
-        )
-        .map_err(|e| e.to_string())?;
+        crate::memory::store_message(&conn, &conversation_id, "user", &content)
+            .map_err(|e| format!("Failed to store user message: {}", e))?;
     }
 
     // Build message history from DB for context
     let ollama_messages = {
         let conn = db.0.lock().map_err(|e| e.to_string())?;
         let db_messages = crate::memory::get_messages(&conn, &conversation_id)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Failed to get message history: {}", e))?;
 
         db_messages
             .into_iter()
@@ -83,7 +99,7 @@ pub async fn send_message(
 
     let response = {
         let engine_guard = engine.0.lock().await;
-        engine_guard
+        match engine_guard
             .stream_chat(ollama_messages, move |token, tps| {
                 let chunk = StreamChunk {
                     conversation_id: conv_id.clone(),
@@ -93,26 +109,27 @@ pub async fn send_message(
                 };
                 app_clone.emit("chat:stream", &chunk).ok();
             })
-            .await?
+            .await
+        {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!("Inference error: {}", e);
+                // Always emit done so frontend doesn't hang
+                emit_done(&app, &conversation_id);
+                return Err(e);
+            }
+        }
     };
 
     // Emit done signal
-    app.emit(
-        "chat:stream",
-        &StreamChunk {
-            conversation_id: conversation_id.clone(),
-            content: String::new(),
-            done: true,
-            tokens_per_second: None,
-        },
-    )
-    .map_err(|e| e.to_string())?;
+    emit_done(&app, &conversation_id);
 
     // Store assistant message
-    {
+    if !response.is_empty() {
         let conn = db.0.lock().map_err(|e| e.to_string())?;
         crate::memory::store_message(&conn, &conversation_id, "assistant", &response)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Failed to store assistant message: {}", e))?;
+        tracing::info!("Stored assistant response: {} chars", response.len());
     }
 
     Ok(())
@@ -122,6 +139,7 @@ pub async fn send_message(
 pub async fn stop_generation(engine: State<'_, EngineState>) -> Result<(), String> {
     let engine_guard = engine.0.lock().await;
     engine_guard.stop();
+    tracing::info!("Generation stop requested");
     Ok(())
 }
 
@@ -137,6 +155,7 @@ pub async fn create_conversation(
     model_id: String,
     db: State<'_, DbState>,
 ) -> Result<Conversation, String> {
+    let title = if title.trim().is_empty() { "New Chat".to_string() } else { title };
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     crate::memory::create_conversation(&conn, &title, &model_id).map_err(|e| e.to_string())
 }

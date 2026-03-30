@@ -11,6 +11,26 @@ interface ModelSelectorProps {
 
 const MODELS = [
   {
+    id: "llama3.2-3b",
+    name: "Llama 3.2 3B",
+    params: "3B",
+    size: "2 GB",
+    family: "Llama",
+    tq: true,
+    minRam: 4,
+    tags: ["Lightweight", "Fast", "Ollama"],
+  },
+  {
+    id: "qwen3-30b-a3b",
+    name: "Qwen 3 30B-A3B",
+    params: "30B (3B active MoE)",
+    size: "18 GB",
+    family: "Qwen",
+    tq: true,
+    minRam: 16,
+    tags: ["Fast", "Coding", "MoE", "Ollama"],
+  },
+  {
     id: "qwen3.5-35b-a3b-q4km",
     name: "Qwen 3.5 35B-A3B",
     params: "35B (3B active MoE)",
@@ -109,8 +129,20 @@ export function ModelSelector({ onClose }: ModelSelectorProps) {
     };
   }, [addToast]);
 
-  const handleSelect = (id: string) => {
+  const handleSelect = async (id: string) => {
     setActiveModel(id);
+
+    // Load model in backend if connected
+    if (backendConnected) {
+      try {
+        const { loadModel } = await import("../../lib/tauri");
+        await loadModel(id);
+        addToast("success", `Model ${id} loaded`);
+      } catch (err) {
+        addToast("error", `Failed to load model: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
     onClose();
   };
 
