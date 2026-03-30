@@ -11,19 +11,17 @@
 
 import type { Conversation, ModelInfo, AppSettings, SystemInfo, StreamChunk, DownloadProgress } from "../types";
 
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+/** Check if we're running inside Tauri (evaluated fresh each call) */
+export function isTauriApp(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
 
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  if (isTauri) {
+  if (isTauriApp()) {
     const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
     return tauriInvoke<T>(cmd, args);
   }
   throw new Error(`Tauri not available — running in browser stub mode`);
-}
-
-/** Check if we're running inside Tauri */
-export function isTauriApp(): boolean {
-  return isTauri;
 }
 
 // ── Chat commands ──────────────────────────────────────────────
@@ -89,7 +87,7 @@ export async function getSystemInfo(): Promise<SystemInfo> {
 export async function listenToStream(
   callback: (chunk: StreamChunk) => void,
 ): Promise<() => void> {
-  if (isTauri) {
+  if (isTauriApp()) {
     const { listen } = await import("@tauri-apps/api/event");
     const unlisten = await listen<StreamChunk>("chat:stream", (event) => {
       callback(event.payload);
@@ -102,7 +100,7 @@ export async function listenToStream(
 export async function listenToDownloadProgress(
   callback: (progress: DownloadProgress) => void,
 ): Promise<() => void> {
-  if (isTauri) {
+  if (isTauriApp()) {
     const { listen } = await import("@tauri-apps/api/event");
     const unlisten = await listen<DownloadProgress>("download:progress", (event) => {
       callback(event.payload);

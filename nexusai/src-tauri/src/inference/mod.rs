@@ -161,34 +161,22 @@ impl InferenceEngine {
 
                 match serde_json::from_str::<OllamaStreamChunk>(trimmed) {
                     Ok(parsed) => {
+                        // Calculate tokens/sec (only present on final chunk)
+                        let tps = match (parsed.eval_count, parsed.eval_duration) {
+                            (Some(count), Some(dur)) if dur > 0 => {
+                                Some(count as f64 / (dur as f64 / 1_000_000_000.0))
+                            }
+                            _ => None,
+                        };
+
                         if let Some(msg) = &parsed.message {
                             if !msg.content.is_empty() {
                                 full_response.push_str(&msg.content);
-
-                                // Calculate tokens/sec from final chunk
-                                let tps = if parsed.done {
-                                    match (parsed.eval_count, parsed.eval_duration) {
-                                        (Some(count), Some(dur)) if dur > 0 => {
-                                            Some(count as f64 / (dur as f64 / 1_000_000_000.0))
-                                        }
-                                        _ => None,
-                                    }
-                                } else {
-                                    None
-                                };
-
                                 on_token(&msg.content, tps);
                             }
                         }
 
                         if parsed.done {
-                            // Extract final stats
-                            let tps = match (parsed.eval_count, parsed.eval_duration) {
-                                (Some(count), Some(dur)) if dur > 0 => {
-                                    Some(count as f64 / (dur as f64 / 1_000_000_000.0))
-                                }
-                                _ => None,
-                            };
                             if let Some(tps_val) = tps {
                                 tracing::info!(
                                     "Generation complete: {:.1} tokens/sec",
@@ -214,6 +202,10 @@ impl InferenceEngine {
 
     pub fn is_loaded(&self) -> bool {
         self.model_loaded
+    }
+
+    pub fn model_id(&self) -> Option<&str> {
+        self.model_id.as_deref()
     }
 
     pub fn stop_flag(&self) -> Arc<AtomicBool> {

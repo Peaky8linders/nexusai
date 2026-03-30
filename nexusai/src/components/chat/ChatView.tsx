@@ -31,7 +31,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messageCount]);
 
-  // Set up stream listener when backend is connected
+  // Set up stream listener ONCE when backend is connected
   useEffect(() => {
     if (!isTauriApp()) return;
 
@@ -41,10 +41,10 @@ export function ChatView({ conversationId }: ChatViewProps) {
         if (cancelled) return;
         listenToStream((chunk) => {
           if (chunk.done) {
-            setGenerating(false);
+            useAppStore.getState().setGenerating(false);
             return;
           }
-          appendToLastMessage(chunk.conversationId, chunk.content);
+          useAppStore.getState().appendToLastMessage(chunk.conversationId, chunk.content);
         })
           .then((unlisten) => {
             if (cancelled) {
@@ -61,10 +61,17 @@ export function ChatView({ conversationId }: ChatViewProps) {
       cancelled = true;
       unlistenRef.current?.();
     };
-  }, [appendToLastMessage, setGenerating]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Register once — use getState() to avoid stale closures
 
   const handleSend = async (content: string) => {
     if (!content.trim() || useAppStore.getState().isGenerating) return;
+
+    // Validate model is loaded
+    if (backendConnected && !activeModelId) {
+      addToast("error", "No model selected. Open model selector (Ctrl+M) to pick one.");
+      return;
+    }
 
     stopRef.current = false;
 

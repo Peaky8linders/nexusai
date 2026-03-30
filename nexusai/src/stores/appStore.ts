@@ -17,7 +17,7 @@ interface AppState {
 
   // Actions
   init: () => Promise<void>;
-  createConversation: (title: string) => void;
+  createConversation: (title: string) => Promise<string | null>;
   setActiveConversation: (id: string | null) => void;
   deleteConversation: (id: string) => void;
   addMessage: (conversationId: string, message: Message) => void;
@@ -25,6 +25,7 @@ interface AppState {
   setGenerating: (generating: boolean) => void;
   setModels: (models: ModelInfo[]) => void;
   setActiveModel: (id: string | null) => void;
+  refreshModels: () => Promise<void>;
   updateConversationTitle: (id: string, title: string) => void;
 }
 
@@ -61,28 +62,38 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  createConversation: (title: string) => {
-    const id = crypto.randomUUID();
-    const now = Date.now();
-    const conversation: Conversation = {
-      id,
-      title,
-      createdAt: now,
-      updatedAt: now,
-      modelId: get().activeModelId ?? "",
-      messages: [],
-    };
-    set((s) => ({
-      conversations: [conversation, ...s.conversations],
-      activeConversationId: id,
-    }));
+  createConversation: async (title: string): Promise<string | null> => {
+    const modelId = get().activeModelId ?? "";
 
-    // Persist to backend if connected — capture modelId before async import
     if (get().backendConnected) {
-      const modelId = get().activeModelId ?? "";
-      import("../lib/tauri").then(({ createConversation: tauriCreate }) => {
-        tauriCreate(title, modelId).catch(console.warn);
-      });
+      try {
+        const { createConversation: tauriCreate } = await import("../lib/tauri");
+        const conv = await tauriCreate(title, modelId);
+        set((s) => ({
+          conversations: [conv, ...s.conversations],
+          activeConversationId: conv.id,
+        }));
+        return conv.id;
+      } catch (e) {
+        console.warn("[NexusAI] Failed to create conversation:", e);
+        return null;
+      }
+    } else {
+      const id = crypto.randomUUID();
+      const now = Date.now();
+      const conversation: Conversation = {
+        id,
+        title,
+        createdAt: now,
+        updatedAt: now,
+        modelId,
+        messages: [],
+      };
+      set((s) => ({
+        conversations: [conversation, ...s.conversations],
+        activeConversationId: id,
+      }));
+      return id;
     }
   },
 
@@ -96,9 +107,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
 
     if (get().backendConnected) {
-      const convId = id;
       import("../lib/tauri").then(({ deleteConversation: tauriDelete }) => {
-        tauriDelete(convId).catch(console.warn);
+        tauriDelete(id).catch(console.warn);
       });
     }
   },
@@ -128,6 +138,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   setModels: (models) => set({ models }),
 
   setActiveModel: (id) => set({ activeModelId: id }),
+
+  refreshModels: async () => {
+    if (!get().backendConnected) return;
+    try {
+      const { listModels } = await import("../lib/tauri");
+      const models = await listModels();
+      set({ models });
+    } catch (e) {
+      console.warn("[NexusAI] Failed to refresh models:", e);
+    }
+  },
 
   updateConversationTitle: (id, title) =>
     set((s) => ({
